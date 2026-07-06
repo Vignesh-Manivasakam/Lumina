@@ -1,4 +1,4 @@
-# 🚀 Lumina RAG: Multimodal Agentic Enterprise Search
+# 🧠 Lumina RAG — Multimodal Agentic Enterprise Search
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![LangGraph](https://img.shields.io/badge/Orchestrator-LangGraph-darkgreen.svg)](https://github.com/langchain-ai/langgraph)
@@ -9,50 +9,73 @@
 
 <p align="center">
   <img src="assets/Lumina.png" alt="Lumina RAG Architecture" width="800"/>
-  <br>
-  <em>Holographic system flow of the Multimodal Corrective RAG (CRAG) pipeline</em>
 </p>
 
-Lumina RAG is a state-of-the-art, high-performance Multimodal Retrieval-Augmented Generation (RAG) platform. Powered by **LangGraph**, **Qdrant Hybrid Vector Store**, **Supabase**, and **NVIDIA NIM Cloud Endpoints**, Lumina builds a unified brain for your enterprise documents, policy papers, schemas, audio clips, and video resources.
+Lumina RAG is a multimodal Retrieval-Augmented Generation platform powered by **LangGraph**, **Qdrant Hybrid Vector Store**, **Supabase**, and **NVIDIA NIM Cloud Endpoints**. It builds a unified searchable brain for enterprise documents, drawings, audio recordings, and video resources using a self-correcting Corrective RAG (CRAG) pipeline.
 
 ---
 
-## 🏗️ System Architecture & Processing Pipeline
-
-Lumina separates ingestion, database schemas, and agentic query graphs:
+## 🏗️ CRAG Pipeline (LangGraph StateGraph)
 
 ```mermaid
 graph TD
-    PDF["Uploaded Document (PDF, Docx, PPTX)"] --> Ingest["Ingestion Pipeline"]
-    Ingest --> Docling["Docling Layout Analysis & OCR"]
-    Docling --> Embedder["NVIDIA Multimodal Embedder"]
-    Embedder --> Qdrant[("Qdrant Vector Database")]
+    Query["User Query + Optional Image"] --> Router{"RouterAgent"}
+    Router -->|simple/complex| Retrieve["RetrieverAgent"]
+    Router -->|multimodal| Retrieve
+    Router -->|direct| Generate
     
-    User["User Query + Optional Image"] --> Route{"LangGraph RouterAgent"}
-    Route -->|Vector Search| Retrieve["RetrieverAgent"]
-    Retrieve --> Qdrant
-    Retrieve --> Grader{"GraderAgent (Relevance Check)"}
+    Retrieve --> Qdrant[("Qdrant (Dense + BM25 RRF Fusion)")]
+    Qdrant --> Rerank["NVIDIA Reranker (nemotron-rerank-1b)"]
+    Rerank --> Grader{"GraderAgent (0.0–1.0 Relevance)"}
     
-    Grader -->|Relevant| Generate["GeneratorAgent (NVIDIA NIM)"]
-    Grader -->|Irrelevant| Rewrite["RewriterAgent"]
-    Rewrite -->|New Query| Retrieve
+    Grader -->|≥2 Relevant Docs| Generate["GeneratorAgent (Llama 3.2 VLM)"]
+    Grader -->|Insufficient| Rewrite["RewriterAgent"]
+    Rewrite -->|"HyDE → Step-back → Decomposition"| Retrieve
     
-    Generate --> Session["Supabase Session & History Logs"]
-    Session --> User
+    Generate --> Safety["NemoGuard 8B Content Safety"]
+    Safety --> Stream["SSE Token Stream + Citations"]
 ```
+
+### 5 Agents
+| Agent | Model | Purpose |
+|---|---|---|
+| **Router** | `meta/llama-3.1-8b-instruct` | 4-way classification (simple, complex, multimodal, direct). Heuristic dept-filter extraction. Bypasses LLM for image-attached queries. |
+| **Retriever** | — | Qdrant hybrid search (dense + BM25 sparse via FastEmbed, RRF fusion) → NVIDIA Reranker → top-K. Tracks retrieval count for loop control. |
+| **Grader** | `meta/llama-3.1-8b-instruct` | LLM-scored relevance (0.0–1.0 with JSON output). Multi-fallback parsing (JSON → regex → raw float). Requires ≥2 relevant docs. |
+| **Rewriter** | `meta/llama-3.1-8b-instruct` | 3 strategies cycled each retry: HyDE → Step-back → Decomposition. Sub-query support. |
+| **Generator** | `meta/llama-3.2-11b-vision-instruct` | Multimodal (text + image). Chat history window (last 4 messages). Source citation. Streaming output. |
 
 ---
 
 ## 🚀 Key Features
 
-* **Multimodal Ingestion Pipeline**: Ingests, parses, and indexes PDF papers, docx, audio files (transcripts), and videos (captions + frame visual data).
-* **Corrective RAG (CRAG) Workflow**: Implements an agentic routing pipeline (Router ➔ Retriever ➔ Grader ➔ Rewriter ➔ Generator) via LangGraph to prevent hallucinations and assure relevant context retrieval.
-* **FastMCP Server Integration**: Exposes document indexing and hybrid vector search as standard Model Context Protocol (MCP) tools via an SSE channel mounted inside FastAPI.
-* **Inline Query Editing**: Hover over any user message to edit and resubmit it. Lumina automatically truncates the conversation history at that point and streams a fresh response.
-* **Persistent Session Memory**: Sessions are synchronized with Supabase database tables and preserved in `localStorage`, maintaining complete chat history across page refreshes.
-* **Transparent Image Processing**: Frontend downscales and compresses uploaded screenshots and schemas (under 100KB) and preserves transparent PNG lines against a solid white background, resolving black-square conversion issues.
-* **Dynamic Status Header**: The UI dynamically updates status indicators ("Lumina HR Intelligence Online", etc.) in response to target department changes.
-* **Generation Abort Control**: Pulsating red stop button instantly aborts active server streaming connections using `AbortSignal` HTTP controllers.
+### Multimodal Ingestion
+* **PDF/DOCX/PPTX** — Docling with OCR + table extraction (tables kept intact as single chunks)
+* **Audio** — Groq Whisper-large-v3 transcription
+* **Video** — ffmpeg keyframe extraction + VLM captioning per frame
+* **Images** — PyMuPDF extraction + VLM captioning
+* **Chunking** — RecursiveCharacterTextSplitter (512 tokens, 100 overlap), 5 modalities preserved
+
+### Search & Retrieval
+* **Qdrant hybrid vectors** — dense embeddings (`nvidia/llama-nemotron-embed-vl-1b-v2`, 2048-dim) + BM25 sparse via FastEmbed
+* **Reciprocal Rank Fusion (RRF)** for combining dense and sparse results
+* **NVIDIA Reranker** (`nvidia/llama-nemotron-rerank-1b-v2`) for precision filtering
+* **Payload indexes** on doc_id, modality, dept, file_type for filtered search
+
+### Infrastructure
+* **Content safety** — NVIDIA NemoGuard 8B pre-screens all queries with graceful fallback
+* **FastMCP server** — mounted at `/mcp` on FastAPI; exposes `list_documents` and `query_knowledge_base` as standard MCP tools via SSE
+* **Supabase schema** — 4 tables (documents, chunks, sessions, messages) with UUID PKs, JSONB source_chunks, cascading deletes
+* **Department-scoped** uploads and queries (General, HR, Finance, Policy, Legal)
+* **Background ingestion** via FastAPI BackgroundTasks with status polling (pending → processing → ready/failed)
+
+### Frontend (Next.js/React)
+* SSE token-by-token streaming with markdown table rendering
+* Expandable source citations with modality icons and relevance scores
+* Image attachment with client-side compression (1024px max, JPEG 0.75 quality)
+* **Inline message editing** — hover pencil icon to edit any past message; Lumina truncates history and re-streams
+* **Stop generation** button via AbortController
+* Session persistence via localStorage
 
 ---
 
@@ -62,71 +85,42 @@ graph TD
 Chatbot/
 ├── backend/
 │   ├── app/
-│   │   ├── agents/            # Intelligent agents (Router, Grader, Rewriter, Generator)
-│   │   ├── graph/             # LangGraph state machine flow (crag_graph.py)
-│   │   ├── ingestion/         # Parsers & image extractors (PDF, Audio, Video pipelines)
-│   │   ├── retrieval/         # Qdrant Hybrid vector store connectors
-│   │   ├── services/          # Client API configurations (NVIDIA NIM, Supabase REST)
-│   │   ├── utils.py           # UUID generator and basic utilities
-│   │   ├── main.py            # FastAPI gateway, session APIs, and MCP SSE server mount
-│   │   └── mcp_server.py      # FastMCP tool registrations (list_docs, query_knowledge_base)
-│   ├── .env                   # Private keys (NVIDIA Key, Qdrant Endpoint, Supabase secrets)
-│   ├── requirements.txt       # Python backend dependencies
-│   └── supabase_schema.sql    # Database schema migrations for sessions, messages, and documents
+│   │   ├── agents/            # Router, Retriever, Grader, Rewriter, Generator
+│   │   ├── graph/             # LangGraph StateGraph CRAG flow (crag_graph.py)
+│   │   ├── ingestion/         # Parsers (PDF/Audio/Video/Image), chunker, embedder
+│   │   ├── retrieval/         # Qdrant hybrid vector store connector
+│   │   ├── services/          # NVIDIA NIM client, Supabase client
+│   │   ├── main.py            # FastAPI gateway, session APIs, MCP SSE mount
+│   │   └── mcp_server.py      # FastMCP tool registrations
+│   ├── .env                   # API keys (NVIDIA, Qdrant, Supabase, Groq)
+│   ├── requirements.txt       # Python dependencies
+│   └── supabase_schema.sql    # Database schema migrations
 ├── frontend/
-│   ├── app/                   # Next.js React codebase, stylesheets, global page templates
-│   ├── lib/                   # API client integrations, abort controllers, type signatures
-│   ├── package.json           # Node project dependencies
-│   └── postcss/tailwind       # Design configuration utility parameters
-├── prompts/
-│   └── image_prompt_Lumina.md # ChatGPT design prompts
-└── README.md                  # Overall project documentation and guides
+│   ├── app/                   # Next.js React SPA (page.tsx — 808 lines)
+│   ├── lib/                   # API client, abort controllers, type signatures
+│   └── package.json           # Node dependencies
+└── README.md
 ```
 
 ---
 
 ## 🛠️ Setup & Execution
 
-### 1. Backend API Server Setup
-Make sure Python 3.10+ is installed on your machine.
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Configure the `.env` file containing database connections and API keys:
-   ```env
-   NVIDIA_API_KEY="nvapi-..."
-   QDRANT_URL="https://..."
-   QDRANT_API_KEY="ey..."
-   SUPABASE_URL="https://..."
-   SUPABASE_SERVICE_KEY="sb_secret_..."
-   ```
-4. Start the FastAPI server:
-   ```bash
-   python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-   ```
+### Backend
+```bash
+cd backend
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
 
-### 2. Frontend Interface Setup
-Make sure Node.js (v18+) is installed.
-1. Navigate to the frontend directory:
-   ```bash
-   cd ../frontend
-   ```
-2. Install Node modules:
-   ```bash
-   npm install
-   ```
-3. Run the Next.js development server:
-   ```bash
-   npm run dev
-   ```
-4. Access the web interface at [http://localhost:3000](http://localhost:3000).
+### Frontend
+```bash
+cd frontend && npm install && npm run dev
+```
+
+Access at [http://localhost:3000](http://localhost:3000).
 
 ---
 
 ## 🛡️ Corporate Confidentiality Notice
-This repository is an anonymized, public proof-of-concept (`[Public POC]`) demonstrating the semantic matching and memory pipeline architectures. It does not contain proprietary data or internal intellectual property from Bosch or ZF Rane.
+This repository is an anonymized, public proof-of-concept. It does not contain proprietary data or internal intellectual property.
