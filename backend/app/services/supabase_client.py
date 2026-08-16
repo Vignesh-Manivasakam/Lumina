@@ -233,16 +233,39 @@ class SupabaseService:
             print(f"[SupabaseService] insert_chunks failed (non-fatal): {exc}")
 
     # --- Chat Sessions ---
-    def create_session(self, user_id: Optional[str] = None) -> dict:
-        if not self._enabled:
+    def ensure_session(self, session_id: str, user_id: Optional[str] = None) -> dict:
+        """Ensure that a session record with id=session_id exists in Supabase.
+
+        Uses upsert so it is safe to call concurrently and idempotently.
+        """
+        if not self._enabled or not self._client or not session_id:
+            return {"id": session_id or "local"}
+        try:
+            data = {"id": session_id}
+            if user_id:
+                data["user_id"] = user_id
+            res = self._client.table("sessions").upsert(data).execute()
+            return res.data[0] if res.data else {"id": session_id}
+        except Exception as exc:
+            logger.warning(f"ensure_session failed for {session_id}: {exc}")
+            return {"id": session_id}
+
+    def create_session(self, user_id: Optional[str] = None, session_id: Optional[str] = None) -> dict:
+        if not self._enabled or not self._client:
             # Local-only mode: caller will use a session UUID generated
             # by the SessionIsolationMiddleware. No persistence.
-            return {"id": "local"}
+            return {"id": session_id or "local"}
         data: dict = {}
+        if session_id:
+            data["id"] = session_id
         if user_id:
             data["user_id"] = user_id
-        res = self._client.table("sessions").insert(data).execute()
-        return res.data[0] if res.data else {}
+        try:
+            res = self._client.table("sessions").upsert(data).execute()
+            return res.data[0] if res.data else {"id": session_id or "local"}
+        except Exception as exc:
+            logger.warning(f"create_session failed: {exc}")
+            return {"id": session_id or "local"}
 
     def get_session(self, session_id: str) -> Optional[dict]:
         if not self._enabled:
@@ -271,17 +294,22 @@ class SupabaseService:
         image_b64: Optional[str] = None,
         source_chunks: Optional[list] = None,
     ) -> dict:
-        if not self._enabled:
+        if not self._enabled or not self._client or not session_id:
             return {"id": "local", "session_id": session_id, "role": role}
-        data = {
-            "session_id": session_id,
-            "role": role,
-            "content": content,
-            "image_b64": image_b64,
-            "source_chunks": source_chunks or [],
-        }
-        res = self._client.table("messages").insert(data).execute()
-        return res.data[0] if res.data else {}
+        try:
+            self.ensure_session(session_id)
+            data = {
+                "session_id": session_id,
+                "role": role,
+                "content": content,
+                "image_b64": image_b64,
+                "source_chunks": source_chunks or [],
+            }
+            res = self._client.table("messages").insert(data).execute()
+            return res.data[0] if res.data else {}
+        except Exception as exc:
+            logger.warning(f"add_message failed to insert message in Supabase: {exc}")
+            return {"id": "local", "session_id": session_id, "role": role}
 
     def get_session_messages(self, session_id: str) -> list:
         if not self._enabled:

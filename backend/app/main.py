@@ -222,12 +222,15 @@ async def chat(request: ChatRequest, http_request: Request):
 
         try:
             if effective_session:
-                pipeline.supabase.add_message(
-                    session_id=effective_session,
-                    role="user",
-                    content=request.query,
-                    image_b64=request.image_b64,
-                )
+                try:
+                    pipeline.supabase.add_message(
+                        session_id=effective_session,
+                        role="user",
+                        content=request.query,
+                        image_b64=request.image_b64,
+                    )
+                except Exception as exc:
+                    print(f"[Supabase] User message save error: {exc}")
 
             # Yield status events as they arrive while the graph runs.
             async for sse_status in _stream_graph_output():
@@ -288,12 +291,15 @@ async def chat(request: ChatRequest, http_request: Request):
                 msg_content = full_response
                 if not msg_content and image_result:
                     msg_content = f"Generated image for: {image_result.get('refined_prompt') or image_result.get('prompt', '')}"
-                pipeline.supabase.add_message(
-                    session_id=effective_session,
-                    role="assistant",
-                    content=msg_content,
-                    source_chunks=formatted_sources,
-                )
+                try:
+                    pipeline.supabase.add_message(
+                        session_id=effective_session,
+                        role="assistant",
+                        content=msg_content,
+                        source_chunks=formatted_sources,
+                    )
+                except Exception as exc:
+                    print(f"[Supabase] Assistant message save error: {exc}")
 
             yield f"data: {json.dumps({'type': 'sources', 'sources': formatted_sources})}\n\n"
             yield "data: [DONE]\n\n"
