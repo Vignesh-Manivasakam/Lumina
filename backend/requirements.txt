@@ -16,8 +16,12 @@ fastembed>=0.3.0
 # --- Local reranker: FlashRank MiniLM (~30 MB CPU) ---
 flashrank>=0.2.0
 
-# --- LangChain core text splitters (used by ParentChildChunker) ---
+# --- LangChain & LangGraph (CRAG State Graph & Splitters) ---
 langchain-text-splitters>=0.3.0
+langgraph>=0.0.20
+
+# --- OpenAI SDK (Used for NVIDIA NIM & OpenAI compatible endpoints) ---
+openai>=1.12.0
 
 # --- Vector store client (Qdrant; uses external Qdrant Cloud free tier) ---
 qdrant-client>=1.10.0
