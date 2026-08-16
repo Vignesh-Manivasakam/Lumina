@@ -2,11 +2,13 @@ import base64
 import fitz  # PyMuPDF
 
 class ImageExtractor:
-    def __init__(self, nvidia_client):
-        self.nvidia = nvidia_client
+    def __init__(self, llm_client):
+        self.llm = llm_client
+        # Back-compat alias
+        self.nvidia = llm_client
 
     def extract_and_caption(self, pdf_path: str, doc_id: str) -> list[dict]:
-        """Extract embedded images from PDF, generate captions via NVIDIA VLM."""
+        """Extract embedded images from PDF, generate captions via Gemini VLM."""
         from app.utils import generate_uuid
         doc = fitz.open(pdf_path)
         image_chunks = []
@@ -60,5 +62,5 @@ class ImageExtractor:
                 ]
             }
         ]
-        resp = self.nvidia.generate(messages, stream=False)
+        resp = self.llm.generate(messages, stream=False)
         return resp.content

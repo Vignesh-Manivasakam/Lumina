@@ -1,5 +1,0 @@
-{
-  "framework": "nextjs",
-  "installCommand": "if [ -d Chatbot/frontend ]; then cd Chatbot/frontend; fi; npm ci",
-  "buildCommand": "if [ -d Chatbot/frontend ]; then cd Chatbot/frontend; fi; npm run build"
-}

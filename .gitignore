@@ -34,3 +34,26 @@ Thumbs.db
 .gemini/
 temp/
 Profile Update/
+
+# Testing & Coverage
+.pytest_cache/
+**/.pytest_cache/
+.coverage
+**/.coverage
+htmlcov/
+**/htmlcov/
+
+# Local cache & data
+graphify-out/
+.swarm/
+*.local_documents.json
+*.local_mcp.json
+*.tsbuildinfo
+*.wav
+
+# Ruflo local secrets and runtime data
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/

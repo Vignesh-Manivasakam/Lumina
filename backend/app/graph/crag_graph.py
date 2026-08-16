@@ -1,77 +1,164 @@
-from typing import TypedDict, Optional, List, Any
-from langgraph.graph import StateGraph, END
-from app.agents.router import RouterAgent
-from app.agents.retriever import RetrieverAgent
-from app.agents.grader import GraderAgent
-from app.agents.rewriter import RewriterAgent
-from app.agents.generator import GeneratorAgent
+from __future__ import annotations
 
-class RAGState(TypedDict):
+import logging
+from typing import Any, Callable, List, Optional, TypedDict
+
+from langgraph.graph import END, StateGraph
+
+from app.agents.generator import GeneratorAgent
+from app.agents.grader import GraderAgent
+from app.agents.retriever import RetrieverAgent
+from app.agents.rewriter import RewriterAgent
+from app.agents.router import RouterAgent
+from app.skills.image_gen_skill import ImageGenSkill
+from app.skills.mcp_tool_skill import MCPToolSkill
+from app.skills.skill_registry import SkillRegistry, default_skill_registry
+from app.skills.web_search_skill import WebSearchSkill
+
+logger = logging.getLogger(__name__)
+
+
+class RAGState(TypedDict, total=False):
     query: str
     user_image_b64: Optional[str]
     route: Optional[str]
+    query_type: Optional[str]
     filters: dict
     rewritten_query: Optional[str]
     sub_queries: List[str]
     retrieved_docs: List[dict]
+    retrieved_children: List[dict]
     relevant_docs: List[dict]
     is_sufficient: bool
     retrieval_count: int
     chat_history: List[dict]
     stream: Optional[Any]
     source_docs: List[dict]
+    # Skills additions:
+    image_result: Optional[dict]
+    web_results: Optional[List[dict]]
+    tool_result: Optional[dict]
+    # Phase 2/4 additions:
+    session_id: Optional[str]
+    use_parent_resolution: bool
+    status_emitter: Optional[Callable[[str, str, Optional[str]], None]]
+    # Phase 4.5: per-agent "thinking" notes — short strings emitted at
+    # decision moments so the UI can show *why* an agent did something.
+    thinking_emitter: Optional[Callable[[str, str], None]]
+
+
+# Ordered so each agent/node gets a deterministic step index in the trace.
+AGENT_ORDER = ("router", "skill_executor", "retriever", "grader", "rewriter", "generator")
+
+
+def _wrap_with_status(agent_name: str, step: int, fn):
+    """Wrap an agent or node method so it emits ``agent_status`` events before/after.
+
+    The emitter, if present on the state, is called as
+    ``emitter(agent_name, status, optional_message)``. Missing emitter
+    is silently ignored so the agents remain usable without SSE plumbing.
+    """
+
+    def wrapped(state: dict) -> dict:
+        emitter = state.get("status_emitter")
+        thinker = state.get("thinking_emitter")
+        try:
+            if emitter:
+                emitter(agent_name, "active", f"{agent_name} started")
+            result = fn(state)
+            if emitter:
+                emitter(agent_name, "complete", f"{agent_name} finished")
+            if thinker:
+                note = (result or {}).get("thinking_note") if isinstance(result, dict) else None
+                if not note and isinstance(result, dict):
+                    note = (state.get("thinking") or {}).get(agent_name)
+                if note:
+                    thinker(agent_name, note)
+            return result
+        except Exception as exc:
+            if emitter:
+                emitter(agent_name, "skipped", f"{agent_name} failed: {exc}")
+            raise
+
+    return wrapped
+
+
+def _create_default_registry() -> SkillRegistry:
+    """Instantiate and register default skills."""
+    registry = SkillRegistry()
+    registry.register(WebSearchSkill())
+    registry.register(ImageGenSkill())
+    registry.register(MCPToolSkill())
+    return registry
+
 
 def build_crag_graph(
-    router: RouterAgent, 
-    retriever: RetrieverAgent, 
-    grader: GraderAgent, 
-    rewriter: RewriterAgent, 
-    generator: GeneratorAgent
+    router: RouterAgent,
+    retriever: RetrieverAgent,
+    grader: GraderAgent,
+    rewriter: RewriterAgent,
+    generator: GeneratorAgent,
+    skill_registry: Optional[SkillRegistry] = None,
 ):
+    registry = skill_registry or _create_default_registry()
+
+    def execute_skill(state: dict) -> dict:
+        return registry.execute(state)
+
     graph = StateGraph(RAGState)
 
-    # 1. Define Nodes
-    graph.add_node("router", router.route)
-    graph.add_node("retriever", retriever.retrieve)
-    graph.add_node("grader", grader.grade)
-    graph.add_node("rewriter", rewriter.rewrite)
-    graph.add_node("generator", generator.generate)
+    graph.add_node("router", _wrap_with_status("router", 0, router.route))
+    graph.add_node("skill_executor", _wrap_with_status("skill_executor", 1, execute_skill))
+    graph.add_node("retriever", _wrap_with_status("retriever", 2, retriever.retrieve))
+    graph.add_node("grader", _wrap_with_status("grader", 3, grader.grade))
+    graph.add_node("rewriter", _wrap_with_status("rewriter", 4, rewriter.rewrite))
+    graph.add_node("generator", _wrap_with_status("generator", 5, generator.generate))
 
-    # 2. Set Entry point
     graph.set_entry_point("router")
 
-    # 3. Define Conditional router decisions
     def route_decision(state: RAGState) -> str:
-        if state.get("route") == "direct":
+        route = state.get("route")
+        if route in ("web_search", "image_gen", "mcp_tool"):
+            return "skill_executor"
+        if route == "direct":
             return "generator"
         return "retriever"
 
+    def skill_decision(state: RAGState) -> str:
+        route = state.get("route")
+        if route == "image_gen":
+            return "end"
+        return "generator"
+
     graph.add_conditional_edges(
-        "router", 
+        "router",
         route_decision,
         {
+            "skill_executor": "skill_executor",
             "retriever": "retriever",
-            "generator": "generator"
-        }
+            "generator": "generator",
+        },
     )
 
-    # 4. retriever always goes to grader
+    graph.add_conditional_edges(
+        "skill_executor",
+        skill_decision,
+        {
+            "generator": "generator",
+            "end": END,
+        },
+    )
+
     graph.add_edge("retriever", "grader")
 
-    # 5. grader conditional routing (CRAG loops)
     graph.add_conditional_edges(
-        "grader", 
+        "grader",
         grader.should_rewrite,
-        {
-            "rewrite": "rewriter",
-            "generate": "generator"
-        }
+        {"rewrite": "rewriter", "generate": "generator"},
     )
 
-    # 6. rewriter routes back to retriever
     graph.add_edge("rewriter", "retriever")
 
-    # 7. generator goes to end
     graph.add_edge("generator", END)
 
     return graph.compile()

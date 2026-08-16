@@ -1,0 +1,97 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Lumina Backend — FastAPI Python Web Service
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: lumina-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    plan: free
+    region: virginia
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: PRIMARY_PROVIDER
+        value: groq
+      - key: AUTO_TITLE_GENERATION
+        value: "true"
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: EMBEDDING_MODEL
+        value: BAAI/bge-small-en-v1.5
+      - key: EMBEDDING_DIM
+        value: "384"
+      - key: RERANK_MODEL
+        value: ms-marco-MiniLM-L-12-v2
+      - key: MAX_RETRIEVAL_RETRIES
+        value: "3"
+      - key: TOP_K_RETRIEVE
+        value: "20"
+      - key: TOP_K_RERANK
+        value: "5"
+      - key: RELEVANCE_THRESHOLD
+        value: "0.5"
+      - key: SESSION_HEADER
+        value: X-Session-ID
+      - key: SESSION_AUTO_ISSUE
+        value: "true"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-flash-latest
+      - key: GEMINI_TEXT_MODEL
+        value: gemini-flash-lite-latest
+      - key: GROQ_API_KEY
+        sync: false
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: NVIDIA_BASE_URL
+        value: https://integrate.api.nvidia.com/v1
+      - key: NVIDIA_ROUTER_MODEL
+        value: nvidia/nemotron-mini-4b-instruct
+      - key: NVIDIA_GENERATOR_MODEL
+        value: nvidia/nemotron-mini-4b-instruct
+      - key: NVIDIA_IMAGE_MODEL
+        value: stabilityai/sdxl-turbo
+      - key: NVIDIA_ASR_MODEL
+        value: nvidia/whisper-large-v3
+      - key: NVIDIA_TTS_MODEL
+        value: nvidia/magpie-tts-multilingual
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: QDRANT_COLLECTION
+        value: multimodal_rag
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+
+  # ---------------------------------------------------------------------------
+  # Lumina Frontend — Next.js Node Web Service
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: lumina-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    plan: free
+    region: virginia
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: lumina-backend
+          type: web
+          property: host

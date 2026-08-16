@@ -1,11 +1,13 @@
 import json
-from app.services.nvidia_client import NVIDIAClient
+from app.services.llm_client import LLMClient
 
 class RewriterAgent:
     """Three-strategy query rewriter (cycles through them on consecutive retries)."""
 
-    def __init__(self, nvidia_client: NVIDIAClient):
-        self.nvidia = nvidia_client
+    def __init__(self, llm_client: LLMClient):
+        self.llm = llm_client
+        # Back-compat alias
+        self.nvidia = llm_client
 
     def rewrite(self, state: dict) -> dict:
         retry_num = state.get("retrieval_count", 1)
@@ -24,6 +26,10 @@ class RewriterAgent:
             # Use the first sub-query for the next retrieval round
             state["rewritten_query"] = sub_queries[0] if sub_queries else query
 
+        state["thinking_note"] = (
+            f"Applied {strategy} strategy for attempt {retry_num}: "
+            f"'{state['rewritten_query'][:80]}…'"
+        )
         return state
 
     def _hyde(self, query: str) -> str:
@@ -32,7 +38,7 @@ class RewriterAgent:
             f"Write a short, professional, hypothetical answer (3-4 sentences) to the question: '{query}'. "
             "This answer is used for dense document retrieval search matching."
         )
-        resp = self.nvidia.generate([{"role": "user", "content": prompt}], stream=False)
+        resp = self.llm.generate([{"role": "user", "content": prompt}], stream=False)
         return resp.content.strip()
 
     def _stepback(self, query: str) -> str:
@@ -41,7 +47,7 @@ class RewriterAgent:
             f"Reformulate the query '{query}' to be a more general, high-level question. "
             "Return only the step-back query and nothing else."
         )
-        resp = self.nvidia.generate([{"role": "user", "content": prompt}], stream=False)
+        resp = self.llm.generate([{"role": "user", "content": prompt}], stream=False)
         return resp.content.strip()
 
     def _decompose(self, query: str) -> list[str]:
@@ -52,7 +58,7 @@ class RewriterAgent:
             "Return only the JSON string and nothing else."
         )
         try:
-            resp = self.nvidia.generate([{"role": "user", "content": prompt}], stream=False)
+            resp = self.llm.generate([{"role": "user", "content": prompt}], stream=False)
             text = resp.content.strip()
             # Clean up potential markdown formatting block
             if text.startswith("```"):

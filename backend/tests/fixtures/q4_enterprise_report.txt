@@ -1,0 +1,17 @@
+# Lumina Enterprise Financial & Operations Report — Fiscal Year 2025/2026
+
+## 1. Executive Summary & Revenue Performance
+During Q4 2025, Lumina Enterprise achieved record Annual Recurring Revenue (ARR) growth driven by widespread adoption of its autonomous agentic reasoning platforms.
+
+| Metric | Q1 2025 | Q2 2025 | Q3 2025 | Q4 2025 | YoY Growth |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Cloud ARR | $42.5M | $58.1M | $76.4M | $104.2M | +145% |
+| Gross Margin | 74.2% | 76.8% | 79.1% | 82.4% | +820 bps |
+| Net Retention Rate | 118% | 124% | 129% | 134% | +1600 bps |
+| Active Enterprise Logos | 210 | 345 | 520 | 810 | +285% |
+
+## 2. Infrastructure & Model Optimization
+The deployment of local ONNX CPU reranking and cloud-based Qdrant vector clustering reduced p95 query latency from 850ms to 120ms. Infrastructure cost per 10k queries declined by 42% following the integration of hybrid Groq Llama 3.3 routing.
+
+## 3. Regulatory & Compliance Governance
+Lumina maintained 100% compliance with EU AI Act High-Risk system standards and SOC2 Type II certification. Zero security incidents or cross-tenant data leakages were recorded in Q4.

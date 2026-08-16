@@ -5,22 +5,43 @@ on:
     branches: [main]
 
 jobs:
-  deploy-backend:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          
-      - name: Run tests
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run test suite
+        env:
+          GEMINI_API_KEY: test-key-ci
+          SUPABASE_URL: ""
+          SUPABASE_SERVICE_KEY: ""
+          QDRANT_URL: http://localhost:6333
+          QDRANT_API_KEY: ""
         run: |
-          pip install -r backend/requirements.txt
-          # Run tests when pytest is configured
-          python -m pytest backend/verify_nvidia.py -v || true
-          
+          cd backend
+          python -m pytest tests/ \
+            -v \
+            --tb=short \
+            -m "not integration" \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-fail-under=40
+
+  deploy-backend:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Deploy to Render
         run: |
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"

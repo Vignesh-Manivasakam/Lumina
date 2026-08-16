@@ -49,3 +49,18 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
+
+-- Enable Row Level Security (RLS) for multi-tenant session isolation
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chunks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- Message Isolation Policy
+CREATE POLICY IF NOT EXISTS "session_isolation_messages" ON messages
+    FOR ALL USING (session_id = current_setting('request.headers', true)::json->>'x-session-id');
+
+-- Document Isolation Policy
+CREATE POLICY IF NOT EXISTS "documents_read_all" ON documents
+    FOR SELECT USING (true);
+

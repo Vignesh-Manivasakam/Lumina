@@ -7,8 +7,10 @@ from pathlib import Path
 from app.utils import generate_uuid
 
 class VideoPipeline:
-    def __init__(self, nvidia_client):
-        self.nvidia = nvidia_client
+    def __init__(self, llm_client):
+        self.llm = llm_client
+        # Back-compat alias
+        self.nvidia = llm_client
 
     def process(self, video_path: str, doc_id: str,
                 frame_interval_sec: int = 30) -> list[dict]:
@@ -72,5 +74,5 @@ class VideoPipeline:
                          "Describe what is happening and any visible text/charts."}
             ]
         }]
-        resp = self.nvidia.generate(messages, stream=False)
+        resp = self.llm.generate(messages, stream=False)
         return resp.content

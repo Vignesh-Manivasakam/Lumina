@@ -2,8 +2,9 @@ import './globals.css';
 import React from 'react';
 
 export const metadata = {
-  title: '🧠 Multimodal Agentic RAG Chatbot',
-  description: 'Powered by NVIDIA NIM, LangGraph, Qdrant, and Supabase',
+  title: 'Lumina — Enterprise Document Intelligence',
+  description:
+    'Deep research over your documents with verified, real-time intelligence.',
 };
 
 export default function RootLayout({
@@ -13,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased min-h-screen flex flex-col bg-[#0d1117]">
+      <body className="antialiased min-h-screen flex flex-col bg-transparent text-slate-900 dark:text-slate-100">
         {children}
       </body>
     </html>
