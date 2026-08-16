@@ -18,7 +18,13 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:
+    try:
+        from mcp.server import FastMCP  # type: ignore
+    except ImportError:
+        FastMCP = None  # type: ignore
 
 from app.config import settings
 from app.ingestion.fast_embedder import LocalEmbedder
@@ -27,7 +33,7 @@ from app.services.supabase_client import SupabaseService
 
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("Lumina RAG Server")
+mcp = FastMCP("Lumina RAG Server") if FastMCP is not None else None
 
 # Shared singletons (B4 fix) - instantiated lazily so the MCP server can
 # be imported in unit tests without forcing a Qdrant connection at
