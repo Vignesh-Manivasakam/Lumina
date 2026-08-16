@@ -19,8 +19,11 @@ logger = logging.getLogger(__name__)
 @lru_cache(maxsize=1)
 def _get_model(model_name: str) -> TextEmbedding:
     """Load and cache the FastEmbed model (one process-wide instance)."""
-    logger.info("Loading FastEmbed model %s (first run downloads ~1.2 GB)…", model_name)
-    model = TextEmbedding(model_name=model_name)
+    logger.info("Loading FastEmbed model %s…", model_name)
+    try:
+        model = TextEmbedding(model_name=model_name, threads=1)
+    except Exception:
+        model = TextEmbedding(model_name=model_name)
     logger.info("FastEmbed model %s loaded.", model_name)
     return model
 
@@ -48,7 +51,10 @@ class LocalEmbedder:
         """Embed a batch of texts. Returns a list of dense vectors."""
         if not texts:
             return []
-        vectors = list(self._model.embed(texts))
+        try:
+            vectors = list(self._model.embed(texts, batch_size=8))
+        except Exception:
+            vectors = list(self._model.embed(texts))
         return [v.tolist() for v in vectors]
 
     def embed_query(self, query: str) -> List[float]:
