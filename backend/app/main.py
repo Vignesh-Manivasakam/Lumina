@@ -44,7 +44,9 @@ app.include_router(conversations_router)
 # MCP server (Phase 1.7: tools only; full session scoping in Phase 2)
 from app.mcp_server import mcp  # noqa: E402
 if mcp is not None and hasattr(mcp, "sse_app"):
-    app.mount("/mcp", mcp.sse_app())
+    sse = mcp.sse_app()
+    if sse is not None:
+        app.mount("/mcp", sse)
 
 # Setup CORS
 origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")] if settings.CORS_ORIGINS else ["*"]
