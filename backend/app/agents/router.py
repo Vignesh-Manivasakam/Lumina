@@ -40,9 +40,10 @@ _IMAGE_GEN_RE = re.compile(
 )
 
 _WEB_SEARCH_RE = re.compile(
-    r"\b(?:search\s+(?:the\s+)?(?:web|internet)|search\s+online|look\s+up\s+online|"
+    r"\b(?:search\s+(?:the\s+)?(?:web|internet|online)|search\s+for|look\s+up\s+online|"
     r"find\s+(?:on\s+the\s+web|online|on\s+google|on\s+the\s+internet)|browse\s+(?:the\s+)?web|"
-    r"google\s+this|web\s+search)\b",
+    r"google\s+this|web\s+search|source\s+links|fact\s+check|market\s+cap|quarterly\s+earnings|"
+    r"real-time\s+traffic|current\s+traffic|traffic\s+status|official\s+benchmarks|frontier\s+ai|open\s+weights)\b",
     re.IGNORECASE,
 )
 

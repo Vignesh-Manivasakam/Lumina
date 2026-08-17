@@ -44,7 +44,15 @@ class ImageExtractor:
         return image_chunks
 
     def _caption_image(self, b64: str, ext: str) -> str:
+        from app.services.provider_registry import GeminiProvider, ProviderRegistry
+        from app.config import settings
+
         mime = f"image/{ext}" if ext != "jpg" else "image/jpeg"
+        prompt = (
+            "Describe this architecture/flowchart/document image in detail for vector search and enterprise retrieval. "
+            "Extract all text, labels, components, databases, arrows, flows, and system relationships accurately."
+        )
+
         messages = [
             {
                 "role": "user",
@@ -55,12 +63,21 @@ class ImageExtractor:
                     },
                     {
                         "type": "text",
-                        "text": "Describe this image in detail for document retrieval. "
-                                "Focus on: type (chart/diagram/figure), key data points, "
-                                "labels, and what concept it illustrates."
+                        "text": prompt
                     }
                 ]
             }
         ]
+
+        if getattr(settings, "GEMINI_API_KEY", ""):
+            try:
+                gemini = GeminiProvider(default_model="gemini-flash-latest")
+                resp = gemini.generate(messages, stream=False)
+                if resp and resp.content:
+                    return resp.content
+            except Exception as exc:
+                print(f"Gemini image captioning error: {exc}")
+
+        # Fallback to general LLM client
         resp = self.llm.generate(messages, stream=False)
         return resp.content

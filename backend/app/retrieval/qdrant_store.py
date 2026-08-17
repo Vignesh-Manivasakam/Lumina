@@ -25,6 +25,7 @@ class QdrantStore:
         self.client = QdrantClient(
             url=settings.QDRANT_URL,
             api_key=settings.QDRANT_API_KEY,
+            timeout=60.0,
         )
         self.collection_name = settings.QDRANT_COLLECTION
         # Initialize FastEmbed BM25 model once to cache it
@@ -135,7 +136,10 @@ class QdrantStore:
                     },
                 )
             )
-        self.client.upsert(collection_name=self.collection_name, points=points)
+        BATCH_SIZE = 30
+        for i in range(0, len(points), BATCH_SIZE):
+            batch = points[i : i + BATCH_SIZE]
+            self.client.upsert(collection_name=self.collection_name, points=batch)
 
     def hybrid_search(
         self,

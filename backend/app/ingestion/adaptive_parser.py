@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class AdaptiveDocumentParser:
     """Dispatch by file extension."""
 
-    SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".pptx", ".ppt", ".txt", ".md", ".html"}
+    SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".pptx", ".ppt", ".txt", ".md", ".html", ".csv", ".tsv", ".json"}
 
     def __init__(self) -> None:
         self._docling = None
@@ -52,6 +52,10 @@ class AdaptiveDocumentParser:
             return self._parse_docx(file_path)
         if ext in {".pptx", ".ppt"}:
             return self._parse_pptx(file_path)
+        if ext in {".csv", ".tsv"}:
+            return self._parse_csv_or_tsv(file_path)
+        if ext == ".json":
+            return self._parse_json(file_path)
         return self._parse_text(file_path)
 
     # ------------------------------------------------------------------
@@ -315,6 +319,97 @@ class AdaptiveDocumentParser:
                 "title": Path(file_path).stem,
                 "num_pages": 1,
                 "file_type": ext,
+                "source_path": file_path,
+            },
+        }
+
+    # ------------------------------------------------------------------
+    # CSV / TSV
+    # ------------------------------------------------------------------
+
+    def _parse_csv_or_tsv(self, file_path: str) -> Dict[str, Any]:
+        import csv
+
+        ext = Path(file_path).suffix.lower().lstrip(".")
+        delimiter = "\t" if ext == "tsv" else ","
+
+        rows: List[List[str]] = []
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                reader = csv.reader(f, delimiter=delimiter)
+                for r in reader:
+                    if any(cell.strip() for cell in r):
+                        rows.append(r)
+        except Exception as exc:
+            logger.error("Failed to read CSV/TSV %s: %s", file_path, exc)
+            return self._parse_text(file_path)
+
+        if not rows:
+            return self._parse_text(file_path)
+
+        # Build Markdown table representation
+        headers = rows[0]
+        md_table_lines = ["| " + " | ".join(headers) + " |"]
+        md_table_lines.append("| " + " | ".join(["---"] * len(headers)) + " |")
+        
+        row_descriptions = []
+        for idx, row in enumerate(rows[1:], start=1):
+            md_table_lines.append("| " + " | ".join(row) + " |")
+            # Build natural text representation per row for dense embedding & BM25
+            row_items = []
+            for h, val in zip(headers, row):
+                if val.strip():
+                    row_items.append(f"{h}: {val}")
+            if row_items:
+                row_descriptions.append(f"[Row {idx}] " + " | ".join(row_items))
+
+        md_table = "\n".join(md_table_lines)
+        natural_text = f"# Data Table: {Path(file_path).stem}\n\n## Table Markdown\n{md_table}\n\n## Row-by-Row Records\n" + "\n".join(row_descriptions)
+
+        pages = [
+            {
+                "page_num": 1,
+                "text": natural_text,
+                "tables": [{"markdown": md_table, "caption": f"{Path(file_path).stem} tabular data"}],
+                "image_refs": [],
+            }
+        ]
+
+        return {
+            "text_markdown": natural_text,
+            "pages": pages,
+            "metadata": {
+                "title": Path(file_path).stem,
+                "num_pages": 1,
+                "file_type": ext,
+                "source_path": file_path,
+            },
+        }
+
+    # ------------------------------------------------------------------
+    # JSON
+    # ------------------------------------------------------------------
+
+    def _parse_json(self, file_path: str) -> Dict[str, Any]:
+        import json
+
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                data = json.load(f)
+            formatted_text = f"# JSON Data: {Path(file_path).stem}\n\n```json\n" + json.dumps(data, indent=2) + "\n```"
+        except Exception as exc:
+            logger.error("Failed to read JSON %s: %s", file_path, exc)
+            return self._parse_text(file_path)
+
+        pages = [{"page_num": 1, "text": formatted_text, "tables": [], "image_refs": []}]
+
+        return {
+            "text_markdown": formatted_text,
+            "pages": pages,
+            "metadata": {
+                "title": Path(file_path).stem,
+                "num_pages": 1,
+                "file_type": "json",
                 "source_path": file_path,
             },
         }

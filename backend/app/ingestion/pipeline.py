@@ -71,8 +71,8 @@ class IngestionPipeline:
             chunks: list[MultimodalChunk] = []
             full_doc_text = ""
 
-            # --- 1. Parse + 2. Parent-child chunk (PDF/DOCX/PPTX/text) ---
-            if file_ext in ["pdf", "docx", "pptx", "doc", "ppt", "txt", "md", "html"]:
+            # --- 1. Parse + 2. Parent-child chunk (PDF/DOCX/PPTX/CSV/TSV/JSON/text) ---
+            if file_ext in ["pdf", "docx", "pptx", "doc", "ppt", "txt", "md", "html", "csv", "tsv", "json"]:
                 parsed_doc = self.doc_parser.parse(file_path)
                 full_doc_text = parsed_doc.get("text_markdown", "") or ""
 
@@ -98,6 +98,33 @@ class IngestionPipeline:
                             "file_type": file_ext,
                         }
                         chunks.append(MultimodalChunk(**img))
+
+            elif file_ext in ["png", "jpg", "jpeg", "webp", "bmp", "gif"]:
+                import base64
+                print(f"Processing image file: {filename}...")
+                with open(file_path, "rb") as img_f:
+                    b64 = base64.b64encode(img_f.read()).decode("utf-8")
+                
+                try:
+                    caption = self.img_extractor._caption_image(b64, file_ext)
+                except Exception as exc:
+                    print(f"VLM image captioning fallback: {exc}")
+                    caption = f"Uploaded architecture / diagram image: {filename}"
+
+                from app.utils import generate_uuid
+                from app.ingestion.chunking import Modality
+                img_chunk = MultimodalChunk(
+                    chunk_id=generate_uuid(f"{doc_id}_img_1"),
+                    doc_id=doc_id,
+                    modality=Modality.IMAGE,
+                    page_num=1,
+                    base64=b64,
+                    caption=caption,
+                    text_repr=f"[IMAGE {filename}] {caption}",
+                    metadata={"title": filename, "dept": dept, "file_type": file_ext},
+                )
+                chunks.append(img_chunk)
+                full_doc_text = img_chunk.text_repr
 
             elif file_ext in ["mp3", "wav", "m4a"]:
                 print("Processing audio transcript...")

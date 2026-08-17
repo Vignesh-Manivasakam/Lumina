@@ -1,0 +1,14 @@
+Metric_Category,Metric_Name,Department,Q1_2025,Q2_2025,Q3_2025,Q4_2025,YoY_Growth_Pct,Unit,Notes
+Financial,Cloud ARR,Executive,$42.5M,$58.2M,$79.1M,$104.2M,+145.17%,USD Millions,Fastest growing revenue stream
+Financial,Gross Margin,Finance,74.2%,76.8%,79.5%,82.4%,+8.20%,Percentage,+820 bps expansion driven by CPU reranking optimization
+Financial,Net Retention Rate (NRR),Sales,112.0%,118.0%,122.0%,128.0%,+14.28%,Percentage,+1600 bps expansion in enterprise segment
+Financial,Customer Acquisition Cost (CAC),Marketing,$14200,$12800,$11400,$9800,-30.98%,USD per Customer,Optimized outbound organic acquisition
+Financial,Customer Lifetime Value (LTV),Marketing,$165000,$192000,$230000,$285000,+72.72%,USD per Customer,Expansion in multi-year enterprise contracts
+Customer,Active Enterprise Logos,Sales,140,210,340,540,+285.71%,Count,Tier-1 Fortune 500 accounts
+Customer,Average Contract Value (ACV),Sales,$110000,$125000,$145000,$168000,+52.72%,USD,Annualized contract commitment
+Customer,Net Promoter Score (NPS),Support,64,68,72,79,+23.43%,Score,Measured quarterly across all active users
+Engineering,Headcount (FTE),HR,85,102,128,155,+82.35%,Employees,Product and Infrastructure engineering
+Engineering,Server p95 Retrieval Latency,Infrastructure,850ms,420ms,210ms,120ms,-85.88%,Milliseconds,Impact of local ONNX CPU reranking and FastEmbed
+Engineering,Infrastructure Cost per 10k Queries,Infrastructure,$4.80,$3.90,$3.10,$2.78,-42.08%,USD,42% cost reduction achieved via local CPU pipeline
+Engineering,API Availability Uptime,Infrastructure,99.91%,99.95%,99.98%,99.99%,+0.08%,Percentage,Zero critical outages across all 4 quarters
+Engineering,Cache Hit Ratio,Infrastructure,41.2%,55.0%,68.4%,78.2%,+89.80%,Percentage,Semantic caching in Redis and local memory

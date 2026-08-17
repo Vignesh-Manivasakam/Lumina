@@ -213,7 +213,7 @@ class ContextualHeaderGenerator:
                     chunk.original_text = chunk.text_repr
 
                 header = headers_map.get(idx)
-                if not header:
+                if not header and len(text_chunks) <= 5:
                     try:
                         header = self.generate_header(
                             chunk_text=chunk.original_text,

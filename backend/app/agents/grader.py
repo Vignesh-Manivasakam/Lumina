@@ -155,6 +155,9 @@ class GraderAgent:
         for i, doc in enumerate(docs):
             if i in batch_scores:
                 score = batch_scores[i]
+            elif not batch_scores:
+                # Fallback to local CPU reranker score directly to avoid sequential LLM roundtrips
+                score = float(doc.get("rerank_score", 0.7))
             else:
                 score = self._grade_single_doc(query, doc)
 

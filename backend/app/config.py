@@ -10,8 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     # ---- LLM (Google Gemini - free tier) -----------------------------
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.0-flash"
-    GEMINI_TEXT_MODEL: str = "gemini-2.0-flash-lite"
+    GEMINI_MODEL: str = "gemini-3.6-flash"
+    GEMINI_TEXT_MODEL: str = "gemini-flash-lite-latest"
 
     # ---- NVIDIA NIM (Primary LLM Provider) ----------------------------
     NVIDIA_API_KEY: str = ""
@@ -52,7 +52,7 @@ class Settings(BaseSettings):
 
     # ---- Application settings -----------------------------------------
     CORS_ORIGINS: str = "*"
-    MAX_RETRIEVAL_RETRIES: int = 3
+    MAX_RETRIEVAL_RETRIES: int = 1
     TOP_K_RETRIEVE: int = 20
     TOP_K_RERANK: int = 5
     RELEVANCE_THRESHOLD: float = 0.5

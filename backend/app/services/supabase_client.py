@@ -116,7 +116,7 @@ class SupabaseService:
 
     # --- Document Registry ---
     def create_document(self, filename: str, file_type: str, dept: str = "General", storage_path: Optional[str] = None) -> dict:
-        doc_id = f"doc-{uuid.uuid4().hex[:10]}"
+        doc_id = str(uuid.uuid4())
         clean_name = filename
         if len(filename) > 17 and filename[16] == "_":
             # Strip random hex prefix from displayed filename if present

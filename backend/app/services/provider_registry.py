@@ -454,11 +454,6 @@ class GeminiProvider(LLMProvider):
             kwargs["system_instruction"] = system_instruction
         return genai.GenerativeModel(**kwargs)
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=10),
-        reraise=True,
-    )
     def _invoke_gemini(
         self,
         messages: List[dict],
@@ -472,6 +467,12 @@ class GeminiProvider(LLMProvider):
                 "GEMINI_API_KEY is not configured. Add it to backend/.env before starting."
             )
 
+        # Normalize aliases to stable production endpoints
+        if model_name in ("gemini-flash-latest", "gemini-flash", "gemini-2.0-flash", "gemini-2.5-flash"):
+            model_name = "gemini-3.6-flash"
+        elif model_name in ("gemini-flash-lite-latest", "gemini-flash-lite", "gemini-2.0-flash-lite", "gemini-2.5-flash-lite"):
+            model_name = "gemini-flash-lite-latest"
+
         system_instruction, contents = _lc_messages_to_gemini(messages)
         if not contents:
             raise ValueError("No user/model messages provided to GeminiProvider.")
@@ -482,37 +483,67 @@ class GeminiProvider(LLMProvider):
         if temperature is not None:
             gen_config["temperature"] = temperature
 
-        model = self._build_model(model_name, system_instruction=system_instruction)
+        candidate_models = [model_name]
+        for fallback_m in ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]:
+            if fallback_m not in candidate_models:
+                candidate_models.append(fallback_m)
 
-        if stream:
-            raw_stream = model.generate_content(
-                contents,
-                stream=True,
-                generation_config=gen_config or None,
-            )
+        last_error = None
+        for candidate_m in candidate_models:
+            try:
+                model = self._build_model(candidate_m, system_instruction=system_instruction)
 
-            def _stream_gen() -> Iterator[ProviderStreamChunk]:
-                for chunk in raw_stream:
-                    text = ""
+                if stream:
+                    raw_stream = model.generate_content(
+                        contents,
+                        stream=True,
+                        generation_config=gen_config or None,
+                    )
+
+                    def _stream_gen() -> Iterator[ProviderStreamChunk]:
+                        try:
+                            for chunk in raw_stream:
+                                text = ""
+                                try:
+                                    text = getattr(chunk, "text", "") or ""
+                                except (ValueError, AttributeError):
+                                    try:
+                                        if hasattr(chunk, "candidates") and chunk.candidates:
+                                            parts = chunk.candidates[0].content.parts
+                                            text = "".join(getattr(p, "text", "") for p in parts)
+                                    except Exception:
+                                        text = ""
+                                if text:
+                                    yield ProviderStreamChunk(text, raw_chunk=chunk)
+                        except Exception as iter_exc:
+                            logger.warning("Gemini stream iteration encountered exception: %s", iter_exc)
+
+                    return ProviderStreamWrapper(_stream_gen())
+
+                response = model.generate_content(
+                    contents,
+                    generation_config=gen_config or None,
+                )
+                content = ""
+                try:
+                    content = getattr(response, "text", "") or ""
+                except (ValueError, AttributeError):
                     try:
-                        text = getattr(chunk, "text", "") or ""
-                    except (ValueError, AttributeError):
-                        text = ""
-                    if text:
-                        yield ProviderStreamChunk(text, raw_chunk=chunk)
+                        if hasattr(response, "candidates") and response.candidates:
+                            parts = response.candidates[0].content.parts
+                            content = "".join(getattr(p, "text", "") for p in parts)
+                    except Exception:
+                        content = ""
+                return ProviderResponse(content, raw_response=response)
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "Gemini candidate model %s failed (%s), trying next candidate...",
+                    candidate_m,
+                    exc,
+                )
 
-            return ProviderStreamWrapper(_stream_gen())
-
-        response = model.generate_content(
-            contents,
-            generation_config=gen_config or None,
-        )
-        content = ""
-        try:
-            content = response.text or ""
-        except (ValueError, AttributeError):
-            content = ""
-        return ProviderResponse(content, raw_response=response)
+        raise last_error or RuntimeError(f"All Gemini candidates failed for {model_name}")
 
     def generate(
         self,
@@ -558,11 +589,11 @@ class GroqProvider(LLMProvider):
         self,
         api_key: Optional[str] = None,
         base_url: Optional[str] = "https://api.groq.com/openai/v1",
-        default_model: Optional[str] = "llama-3.3-70b-versatile",
+        default_model: Optional[str] = "openai/gpt-oss-120b",
     ) -> None:
         self.api_key = api_key if api_key is not None else getattr(settings, "GROQ_API_KEY", "")
         self.base_url = base_url
-        self._default_model = default_model or "llama-3.3-70b-versatile"
+        self._default_model = default_model or "openai/gpt-oss-120b"
         self._client = None
 
         if self.api_key:
@@ -617,24 +648,43 @@ class GroqProvider(LLMProvider):
         if temperature is not None:
             kwargs["temperature"] = temperature
 
-        if stream:
-            response = self._client.chat.completions.create(**kwargs)
+        candidate_models = [model_name]
+        for fallback_m in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b", "llama-3.3-70b-versatile"]:
+            if fallback_m not in candidate_models:
+                candidate_models.append(fallback_m)
 
-            def _stream_gen() -> Iterator[ProviderStreamChunk]:
-                for chunk in response:
-                    choices = getattr(chunk, "choices", [])
-                    if choices:
-                        delta = choices[0].delta
-                        content = getattr(delta, "content", "") or ""
-                        if content:
-                            yield ProviderStreamChunk(content, raw_chunk=chunk)
+        last_err = None
+        for candidate in candidate_models:
+            kwargs["model"] = candidate
+            try:
+                if stream:
+                    response = self._client.chat.completions.create(**kwargs)
 
-            return ProviderStreamWrapper(_stream_gen())
+                    def _stream_gen(resp_obj) -> Iterator[ProviderStreamChunk]:
+                        for chunk in resp_obj:
+                            choices = getattr(chunk, "choices", [])
+                            if choices:
+                                delta = choices[0].delta
+                                content = getattr(delta, "content", "") or ""
+                                if content:
+                                    yield ProviderStreamChunk(content, raw_chunk=chunk)
 
-        response = self._client.chat.completions.create(**kwargs)
-        choices = getattr(response, "choices", [])
-        content = choices[0].message.content if choices else ""
-        return ProviderResponse(content or "", raw_response=response)
+                    return ProviderStreamWrapper(_stream_gen(response))
+
+                response = self._client.chat.completions.create(**kwargs)
+                choices = getattr(response, "choices", [])
+                content = choices[0].message.content if choices else ""
+                return ProviderResponse(content or "", raw_response=response)
+            except Exception as exc:
+                last_err = exc
+                err_str = str(exc).lower()
+                if "model_not_found" in err_str or "does not exist" in err_str or "404" in err_str:
+                    logger.warning("Groq model %s unavailable, trying next candidate: %s", candidate, exc)
+                    continue
+                raise exc
+
+        if last_err:
+            raise last_err
 
     def generate(
         self,
@@ -718,13 +768,13 @@ class ProviderRegistry:
             }
         elif provider_type == "groq":
             return {
-                "router": "llama-3.3-70b-versatile",
-                "generator": "llama-3.3-70b-versatile",
-                "grader": "llama-3.3-70b-versatile",
-                "rewriter": "llama-3.3-70b-versatile",
-                "contextual_headers": "llama-3.3-70b-versatile",
-                "header": "llama-3.3-70b-versatile",
-                "safety": "llama-3.3-70b-versatile",
+                "router": "openai/gpt-oss-120b",
+                "generator": "openai/gpt-oss-120b",
+                "grader": "openai/gpt-oss-120b",
+                "rewriter": "openai/gpt-oss-120b",
+                "contextual_headers": "openai/gpt-oss-120b",
+                "header": "openai/gpt-oss-120b",
+                "safety": "openai/gpt-oss-120b",
                 "image_gen": settings.GEMINI_MODEL,
                 "image": settings.GEMINI_MODEL,
                 "asr": "whisper-large-v3",

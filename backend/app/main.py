@@ -209,16 +209,13 @@ async def chat(request: ChatRequest, http_request: Request):
 
         async def _stream_graph_output():
             """Yield status events while waiting for graph completion."""
-            while True:
+            while not graph_task.done() or not status_queue.empty():
                 try:
-                    event = await asyncio.wait_for(status_queue.get(), timeout=0.1)
+                    event = await asyncio.wait_for(status_queue.get(), timeout=0.05)
                     yield f"data: {json.dumps(event)}\n\n"
                 except asyncio.TimeoutError:
-                    if graph_task.done():
-                        # Drain anything left
-                        while not status_queue.empty():
-                            yield f"data: {json.dumps(status_queue.get_nowait())}\n\n"
-                        return
+                    if graph_task.done() and status_queue.empty():
+                        break
 
         try:
             if effective_session:
@@ -236,7 +233,7 @@ async def chat(request: ChatRequest, http_request: Request):
             async for sse_status in _stream_graph_output():
                 yield sse_status
 
-            result = graph_task.result()
+            result = await graph_task
             stream = result.get("stream")
             retrieved_docs = result.get("retrieved_docs") or []
 

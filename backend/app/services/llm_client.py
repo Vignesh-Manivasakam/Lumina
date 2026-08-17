@@ -84,18 +84,35 @@ class LLMClient:
         max_tokens: int = 1500,
         temperature: float = 0.1,
     ) -> Union[ProviderResponse, ProviderStreamWrapper]:
-        """Generate a chat completion (text or multimodal, streaming or non-streaming).
+        """Generate a chat completion with automatic multi-provider cross-failover."""
+        from app.services.provider_registry import ProviderRegistry
 
-        Returns a ProviderResponse with ``.content`` / ``.text`` (non-streaming)
-        or an iterable ProviderStreamWrapper yielding chunks with ``.content`` / ``.text`` (streaming).
-        """
-        return self.provider.generate(
-            messages=messages,
-            stream=stream,
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
+        registry = ProviderRegistry()
+        providers_to_try = [self.provider]
+        for p_name in ["gemini", "groq", "nvidia"]:
+            p = registry.get(p_name)
+            if p and p not in providers_to_try and getattr(p, "api_key", ""):
+                providers_to_try.append(p)
+
+        last_exc = None
+        for p in providers_to_try:
+            try:
+                return p.generate(
+                    messages=messages,
+                    stream=stream,
+                    model=model if p == self.provider else None,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "Provider %s failed (%s); attempting next provider fallback...",
+                    p.provider_name,
+                    exc,
+                )
+
+        raise last_exc or RuntimeError("All registered LLM providers failed.")
 
     def generate_text(
         self,
@@ -104,13 +121,34 @@ class LLMClient:
         max_tokens: int = 500,
         temperature: float = 0.1,
     ) -> ProviderResponse:
-        """Convenience wrapper for non-streaming text completion."""
-        return self.provider.generate_text(
-            messages=messages,
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
+        """Non-streaming completion with automatic multi-provider cross-failover."""
+        from app.services.provider_registry import ProviderRegistry
+
+        registry = ProviderRegistry()
+        providers_to_try = [self.provider]
+        for p_name in ["gemini", "groq", "nvidia"]:
+            p = registry.get(p_name)
+            if p and p not in providers_to_try and getattr(p, "api_key", ""):
+                providers_to_try.append(p)
+
+        last_exc = None
+        for p in providers_to_try:
+            try:
+                return p.generate_text(
+                    messages=messages,
+                    model=model if p == self.provider else None,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "Provider %s failed in generate_text (%s); attempting next provider fallback...",
+                    p.provider_name,
+                    exc,
+                )
+
+        raise last_exc or RuntimeError("All registered LLM providers failed.")
 
     # ------------------------------------------------------------------
     # Placeholders — real implementations live in dedicated modules
