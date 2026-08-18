@@ -18,8 +18,14 @@ from app.services.supabase_client import SupabaseService
 
 
 class IngestionPipeline:
-    def __init__(self):
-        self.llm = LLMClient()
+    def __init__(
+        self,
+        llm: Optional[LLMClient] = None,
+        qdrant: Optional[QdrantStore] = None,
+        embedder: Optional[MultimodalEmbedder] = None,
+        supabase: Optional[SupabaseService] = None,
+    ):
+        self.llm = llm or LLMClient()
         self.doc_parser = AdaptiveDocumentParser()
         self.analyzer = DocumentAnalyzer()
         self.img_extractor = ImageExtractor(self.llm)
@@ -28,9 +34,9 @@ class IngestionPipeline:
         # Phase 3: hierarchical chunker replaces the legacy ChunkingService
         self.chunker = ParentChildChunker()
         self.contextual = ContextualHeaderGenerator(self.llm)
-        self.embedder = MultimodalEmbedder(LocalEmbedder())
-        self.qdrant = QdrantStore()
-        self.supabase = SupabaseService()
+        self.embedder = embedder or MultimodalEmbedder(LocalEmbedder())
+        self.qdrant = qdrant or QdrantStore()
+        self.supabase = supabase or SupabaseService()
         # Back-compat alias for code paths still reading pipeline.nvidia
         self.nvidia = self.llm
 

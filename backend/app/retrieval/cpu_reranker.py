@@ -18,20 +18,24 @@ logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
-def _get_ranker(model_name: str) -> Ranker:
+def _get_ranker(model_name: str) -> Optional[Ranker]:
     """Load and cache the FlashRank model.
 
     Uses the configured cache directory so subsequent runs skip the
     ~50 MB download. Defaults to the user's cache directory when
     ``cache_dir`` is unset in settings.
     """
-    cache_dir = getattr(settings, "RERANK_CACHE_DIR", None) or None
-    logger.info(
-        "Loading FlashRank model %s (first run downloads ~50 MB)…", model_name
-    )
-    ranker = Ranker(model_name=model_name, cache_dir=cache_dir) if cache_dir else Ranker(model_name=model_name)
-    logger.info("FlashRank model %s loaded.", model_name)
-    return ranker
+    try:
+        cache_dir = getattr(settings, "RERANK_CACHE_DIR", None) or None
+        logger.info(
+            "Loading FlashRank model %s (first run downloads ~50 MB)…", model_name
+        )
+        ranker = Ranker(model_name=model_name, cache_dir=cache_dir) if cache_dir else Ranker(model_name=model_name)
+        logger.info("FlashRank model %s loaded.", model_name)
+        return ranker
+    except Exception as exc:
+        logger.warning("Failed to load FlashRank (%s); using passthrough scoring.", exc)
+        return None
 
 
 class CPUReranker:
@@ -45,7 +49,13 @@ class CPUReranker:
 
     def __init__(self, model_name: Optional[str] = None) -> None:
         self.model_name = model_name or settings.RERANK_MODEL
-        self._ranker = _get_ranker(self.model_name)
+        self._ranker: Optional[Ranker] = None
+
+    @property
+    def ranker(self) -> Optional[Ranker]:
+        if self._ranker is None:
+            self._ranker = _get_ranker(self.model_name)
+        return self._ranker
 
     # ------------------------------------------------------------------
     # Public API
@@ -64,19 +74,27 @@ class CPUReranker:
         if not passages:
             return []
 
+        ranker = self.ranker
+
         if isinstance(passages[0], str):
-            items = [{"id": str(i), "text": t} for i, t in enumerate(passages)]
-            request = RerankRequest(query=query, passages=items)
-            results = self._ranker.rerank(request)
-            res = [
-                {
-                    "id": r.get("id", str(i)),
-                    "text": r.get("text", ""),
-                    "rerank_score": float(r.get("score", 0.0)),
-                }
-                for i, r in enumerate(results)
-            ]
-            return res[:top_k] if top_k is not None else res
+            if ranker is None:
+                return [{"id": str(i), "text": t, "rerank_score": max(0.9 - (i * 0.05), 0.1)} for i, t in enumerate(passages[:top_k])]
+            try:
+                items = [{"id": str(i), "text": t} for i, t in enumerate(passages)]
+                request = RerankRequest(query=query, passages=items)
+                results = ranker.rerank(request)
+                res = [
+                    {
+                        "id": r.get("id", str(i)),
+                        "text": r.get("text", ""),
+                        "rerank_score": float(r.get("score", 0.0)),
+                    }
+                    for i, r in enumerate(results)
+                ]
+                return res[:top_k] if top_k is not None else res
+            except Exception as err:
+                logger.warning("FlashRank rerank failed (%s); using default score order", err)
+                return [{"id": str(i), "text": t, "rerank_score": max(0.9 - (i * 0.05), 0.1)} for i, t in enumerate(passages[:top_k])]
 
         # Object/dict path - preserve original objects, just attach rerank_score
         ids = []
@@ -92,12 +110,15 @@ class CPUReranker:
             # Truncate text to 512 characters to prevent ONNX memory arena spikes
             items.append({"id": pid, "text": str(text)[:512]})
 
-        try:
-            request = RerankRequest(query=query[:250], passages=items)
-            results = self._ranker.rerank(request)
-            score_map = {str(r.get("id")): float(r.get("score", 0.0)) for r in results}
-        except Exception as err:
-            logger.warning("FlashRank rerank failed (%s); using default score order", err)
+        if ranker is not None:
+            try:
+                request = RerankRequest(query=query[:250], passages=items)
+                results = ranker.rerank(request)
+                score_map = {str(r.get("id")): float(r.get("score", 0.0)) for r in results}
+            except Exception as err:
+                logger.warning("FlashRank rerank failed (%s); using default score order", err)
+                score_map = {pid: max(0.9 - (idx * 0.05), 0.1) for idx, pid in enumerate(ids)}
+        else:
             score_map = {pid: max(0.9 - (idx * 0.05), 0.1) for idx, pid in enumerate(ids)}
 
         annotated: list = []
@@ -121,7 +142,13 @@ class CPUReranker:
         if not passages:
             return []
         items = [{"id": str(i), "text": t} for i, t in enumerate(passages)]
-        request = RerankRequest(query=query, passages=items)
-        results = self._ranker.rerank(request)
-        score_map = {int(r["id"]): float(r["score"]) for r in results}
-        return [score_map.get(i, 0.0) for i in range(len(passages))]
+        ranker = self.ranker
+        if ranker is not None:
+            try:
+                request = RerankRequest(query=query, passages=items)
+                results = ranker.rerank(request)
+                score_map = {int(r["id"]): float(r["score"]) for r in results}
+                return [score_map.get(i, 0.0) for i in range(len(passages))]
+            except Exception as exc:
+                logger.warning("FlashRank score failed (%s); using default scores", exc)
+        return [max(0.9 - (i * 0.05), 0.1) for i in range(len(passages))]

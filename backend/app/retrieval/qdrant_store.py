@@ -10,6 +10,24 @@ import uuid
 
 DENSE_DIM = getattr(settings, "EMBEDDING_DIM", 384)
 
+_SPARSE_MODEL: Optional[SparseTextEmbedding] = None
+
+
+def _get_sparse_model() -> Optional[SparseTextEmbedding]:
+    """Process-wide singleton for FastEmbed BM25 sparse model."""
+    global _SPARSE_MODEL
+    if _SPARSE_MODEL is None:
+        try:
+            _SPARSE_MODEL = SparseTextEmbedding("Qdrant/bm25", threads=1)
+        except Exception:
+            try:
+                _SPARSE_MODEL = SparseTextEmbedding("Qdrant/bm25")
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning("Failed to load SparseTextEmbedding: %s", exc)
+                _SPARSE_MODEL = None
+    return _SPARSE_MODEL
+
 
 def _to_valid_point_id(raw_id: str) -> str:
     """Convert arbitrary chunk IDs to valid UUIDs required by Qdrant."""
@@ -28,9 +46,16 @@ class QdrantStore:
             timeout=60.0,
         )
         self.collection_name = settings.QDRANT_COLLECTION
-        # Initialize FastEmbed BM25 model once to cache it
-        self.sparse_model = SparseTextEmbedding("Qdrant/bm25")
         self._ensure_collection()
+
+    @property
+    def sparse_model(self) -> Optional[SparseTextEmbedding]:
+        return _get_sparse_model()
+
+    @sparse_model.setter
+    def sparse_model(self, model: Optional[SparseTextEmbedding]) -> None:
+        global _SPARSE_MODEL
+        _SPARSE_MODEL = model
 
     def _ensure_collection(self):
         try:
@@ -397,8 +422,15 @@ class QdrantStore:
         return models.Filter(must=conditions)
 
     def _bm25_encode(self, text: str) -> dict:
-        result = list(self.sparse_model.embed([text]))[0]
-        return {
-            "indices": result.indices.tolist(),
-            "values": result.values.tolist()
-        }
+        try:
+            model = self.sparse_model
+            if model is not None and text:
+                result = list(model.embed([text]))[0]
+                return {
+                    "indices": result.indices.tolist(),
+                    "values": result.values.tolist()
+                }
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("BM25 encoding failed (%s); using dummy sparse vector", exc)
+        return {"indices": [], "values": []}

@@ -99,7 +99,11 @@ crag_graph = build_crag_graph(
     generator=generator_agent,
 )
 
-pipeline = IngestionPipeline()
+pipeline = IngestionPipeline(
+    llm=llm_client,
+    qdrant=qdrant_store,
+    embedder=embedder,
+)
 
 
 class ChatRequest(BaseModel):
