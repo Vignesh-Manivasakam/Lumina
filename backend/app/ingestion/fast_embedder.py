@@ -45,21 +45,27 @@ class LocalEmbedder:
     ) -> None:
         self.model_name = model_name or settings.EMBEDDING_MODEL
         self.dimension = dimension or settings.EMBEDDING_DIM
-        self._model = _get_model(self.model_name)
+        self._model: Optional[TextEmbedding] = None
+
+    @property
+    def model(self) -> TextEmbedding:
+        if self._model is None:
+            self._model = _get_model(self.model_name)
+        return self._model
 
     def embed_texts(self, texts: List[str]) -> List[List[float]]:
         """Embed a batch of texts. Returns a list of dense vectors."""
         if not texts:
             return []
         try:
-            vectors = list(self._model.embed(texts, batch_size=8))
+            vectors = list(self.model.embed(texts, batch_size=8))
         except Exception:
-            vectors = list(self._model.embed(texts))
+            vectors = list(self.model.embed(texts))
         return [v.tolist() for v in vectors]
 
     def embed_query(self, query: str) -> List[float]:
         """Embed a single query string."""
         if not query:
             raise ValueError("Query must be a non-empty string.")
-        vectors = list(self._model.embed([query]))
+        vectors = list(self.model.embed([query]))
         return vectors[0].tolist()

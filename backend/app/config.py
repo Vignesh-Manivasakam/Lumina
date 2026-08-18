@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     TOP_K_RETRIEVE: int = 20
     TOP_K_RERANK: int = 5
     RELEVANCE_THRESHOLD: float = 0.5
+    ENABLE_FLASHRANK: bool = False
 
     # ---- Session isolation --------------------------------------------
     SESSION_HEADER: str = "X-Session-ID"

@@ -19,12 +19,9 @@ logger = logging.getLogger(__name__)
 
 @lru_cache(maxsize=1)
 def _get_ranker(model_name: str) -> Optional[Ranker]:
-    """Load and cache the FlashRank model.
-
-    Uses the configured cache directory so subsequent runs skip the
-    ~50 MB download. Defaults to the user's cache directory when
-    ``cache_dir`` is unset in settings.
-    """
+    """Load and cache the FlashRank model."""
+    if not getattr(settings, "ENABLE_FLASHRANK", False):
+        return None
     try:
         cache_dir = getattr(settings, "RERANK_CACHE_DIR", None) or None
         logger.info(
