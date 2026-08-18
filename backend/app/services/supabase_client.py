@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
@@ -6,6 +7,8 @@ from pathlib import Path
 from typing import Optional
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class SupabaseService:
@@ -127,7 +130,7 @@ class SupabaseService:
             "filename": clean_name,
             "file_type": file_type,
             "dept": dept,
-            "status": "processing",
+            "status": "pending",
             "storage_path": storage_path,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "num_chunks": 0,
@@ -144,13 +147,13 @@ class SupabaseService:
                 "filename": clean_name,
                 "file_type": file_type,
                 "dept": dept,
-                "status": "processing",
+                "status": "pending",
                 "storage_path": storage_path,
             }
             res = self._client.table("documents").insert(data).execute()
             return res.data[0] if res.data else local_doc
         except Exception as e:
-            print(f"[SupabaseService] create_document remote failed (using local): {e}")
+            logger.warning(f"create_document remote failed (using local): {e}")
             return local_doc
 
     def update_document_status(self, doc_id: str, status: str, num_chunks: Optional[int] = None) -> dict:
@@ -173,7 +176,7 @@ class SupabaseService:
             res = self._client.table("documents").update(data).eq("id", doc_id).execute()
             return res.data[0] if res.data else local_doc
         except Exception as e:
-            print(f"[SupabaseService] update_document_status remote failed: {e}")
+            logger.warning(f"update_document_status remote failed: {e}")
             return local_doc
 
     def get_document_status(self, doc_id: str) -> str:
@@ -193,10 +196,10 @@ class SupabaseService:
         if self._enabled and self._client:
             try:
                 res = self._client.table("documents").select("*").order("created_at", desc=True).execute()
-                if res.data:
+                if res.data is not None:
                     return res.data
             except Exception as e:
-                print(f"[SupabaseService] get_all_documents remote failed: {e}")
+                logger.warning(f"get_all_documents remote failed: {e}")
 
         # Return local documents sorted by created_at desc
         return sorted(

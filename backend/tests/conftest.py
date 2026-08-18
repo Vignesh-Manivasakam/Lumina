@@ -57,6 +57,9 @@ def _install_supabase_stub() -> None:
         def update(self, *args: Any, **kwargs: Any) -> _StubClient:
             return self
 
+        def upsert(self, *args: Any, **kwargs: Any) -> _StubClient:
+            return self
+
         def eq(self, *args: Any, **kwargs: Any) -> _StubClient:
             return self
 

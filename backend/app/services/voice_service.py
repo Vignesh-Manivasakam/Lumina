@@ -20,18 +20,25 @@ class VoiceService:
         asr_model: Optional[str] = None,
         tts_model: Optional[str] = None,
     ) -> None:
-        groq_key = getattr(settings, "GROQ_API_KEY", "")
-        if groq_key:
-            self.asr_api_key = groq_key
-            self.asr_base_url = "https://api.groq.com/openai/v1"
-            self.asr_model = asr_model or "whisper-large-v3-turbo"
-        else:
-            self.asr_api_key = api_key if api_key is not None else getattr(settings, "NVIDIA_API_KEY", "")
+        if api_key is not None:
+            self.asr_api_key = api_key
             self.asr_base_url = base_url or getattr(settings, "NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
             self.asr_model = asr_model or getattr(settings, "NVIDIA_ASR_MODEL", "nvidia/whisper-large-v3")
+            self.api_key = api_key
+            self.base_url = base_url or getattr(settings, "NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
+        else:
+            groq_key = getattr(settings, "GROQ_API_KEY", "")
+            if groq_key:
+                self.asr_api_key = groq_key
+                self.asr_base_url = "https://api.groq.com/openai/v1"
+                self.asr_model = asr_model or "whisper-large-v3-turbo"
+            else:
+                self.asr_api_key = getattr(settings, "NVIDIA_API_KEY", "")
+                self.asr_base_url = base_url or getattr(settings, "NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
+                self.asr_model = asr_model or getattr(settings, "NVIDIA_ASR_MODEL", "nvidia/whisper-large-v3")
+            self.api_key = getattr(settings, "NVIDIA_API_KEY", "")
+            self.base_url = base_url or getattr(settings, "NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
 
-        self.api_key = api_key if api_key is not None else getattr(settings, "NVIDIA_API_KEY", "")
-        self.base_url = base_url or getattr(settings, "NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
         self.tts_model = tts_model or getattr(settings, "NVIDIA_TTS_MODEL", "nvidia/magpie-tts-multilingual")
         self._client = None
         self._asr_client = None

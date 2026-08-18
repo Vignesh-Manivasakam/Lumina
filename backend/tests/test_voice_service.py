@@ -23,6 +23,7 @@ def test_voice_service_transcribe_with_client():
     mock_transcript = MagicMock()
     mock_transcript.text = "Hello, Lumina RAG!"
     mock_client.audio.transcriptions.create.return_value = mock_transcript
+    service._asr_client = mock_client
     service._client = mock_client
 
     text = service.transcribe(b"fake audio content", format="wav")

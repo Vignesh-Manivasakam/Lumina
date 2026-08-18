@@ -11,14 +11,18 @@ from app.services.supabase_client import SupabaseService
 def supabase_off(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(settings, "SUPABASE_URL", "")
     monkeypatch.setattr(settings, "SUPABASE_SERVICE_KEY", "")
-    return SupabaseService()
+    service = SupabaseService()
+    service._local_documents = {}
+    return service
 
 
 @pytest.fixture
 def supabase_on(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(settings, "SUPABASE_URL", "https://test.supabase.co")
     monkeypatch.setattr(settings, "SUPABASE_SERVICE_KEY", "test-service-key")
-    return SupabaseService()
+    service = SupabaseService()
+    service._local_documents = {}
+    return service
 
 
 class TestSupabaseOffline:

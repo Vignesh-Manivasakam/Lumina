@@ -52,7 +52,7 @@ class Settings(BaseSettings):
 
     # ---- Application settings -----------------------------------------
     CORS_ORIGINS: str = "*"
-    MAX_RETRIEVAL_RETRIES: int = 1
+    MAX_RETRIEVAL_RETRIES: int = 3
     TOP_K_RETRIEVE: int = 20
     TOP_K_RERANK: int = 5
     RELEVANCE_THRESHOLD: float = 0.5

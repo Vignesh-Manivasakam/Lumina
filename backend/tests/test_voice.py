@@ -27,6 +27,7 @@ class TestVoiceServiceTranscription:
         mock_transcript = MagicMock()
         mock_transcript.text = "Lumina enterprise intelligence system"
         mock_client.audio.transcriptions.create.return_value = mock_transcript
+        service._asr_client = mock_client
         service._client = mock_client
 
         result = service.transcribe(b"fake audio data", format="wav")
@@ -37,6 +38,7 @@ class TestVoiceServiceTranscription:
         service = VoiceService(api_key="mock-key")
         mock_client = MagicMock()
         mock_client.audio.transcriptions.create.side_effect = Exception("SDK error")
+        service._asr_client = mock_client
         service._client = mock_client
 
         mock_http_resp = MagicMock()
