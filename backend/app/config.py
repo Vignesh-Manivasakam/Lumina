@@ -28,11 +28,10 @@ class Settings(BaseSettings):
     AUTO_TITLE_GENERATION: bool = True
 
     # ---- Embeddings (local, via FastEmbed) ----------------------------
-    # FastEmbed's BGE-M3 release lags upstream; bge-large-en-v1.5 is the
-    # 1024-dim BGE model that ships with fastembed today. Switching to
-    # the ONNX build of BGE-M3 only requires changing this string.
-    EMBEDDING_MODEL: str = "BAAI/bge-large-en-v1.5"
-    EMBEDDING_DIM: int = 1024
+    # BAAI/bge-small-en-v1.5 is lightweight (~67 MB, 384-dim) and runs reliably
+    # under restricted container memory environments (e.g. Render free tier 512MB).
+    EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
+    EMBEDDING_DIM: int = 384
 
     # ---- Reranker (local, FlashRank) ----------------------------------
     RERANK_MODEL: str = "ms-marco-MiniLM-L-12-v2"
