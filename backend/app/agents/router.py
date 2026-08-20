@@ -48,7 +48,7 @@ _WEB_SEARCH_RE = re.compile(
 )
 
 _MCP_TOOL_RE = re.compile(
-    r"\b(?:mcp\s+tool|call\s+mcp|invoke\s+mcp|use\s+mcp|mcp:)\b",
+    r"\b(?:mcp\s+tool|call\s+mcp|invoke\s+mcp|use\s+mcp|mcp:|zapier|gmail|email|emails|mail|inbox|linkedin)\b",
     re.IGNORECASE,
 )
 

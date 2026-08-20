@@ -69,3 +69,72 @@ async def remove_mcp_connection(connection_id: str):
     except Exception as exc:
         logger.exception("Failed to delete MCP connection: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+class MCPToolInvokeRequest(BaseModel):
+    server_name: str
+    tool_name: str
+    arguments: Optional[dict] = None
+
+
+@router.post("/invoke")
+async def invoke_mcp_tool(req: MCPToolInvokeRequest):
+    """Directly invoke a tool on a connected MCP server."""
+    try:
+        result = await mcp_client_service.invoke_tool_async(
+            server_name=req.server_name,
+            tool_name=req.tool_name,
+            arguments=req.arguments,
+        )
+        return result
+    except Exception as exc:
+        logger.exception("Failed to invoke MCP tool: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/rag/tools")
+def get_rag_tools():
+    """List native Lumina RAG tools exposed via MCP."""
+    return [
+        {
+            "name": "query_knowledge_base",
+            "description": "Runs hybrid dense+BM25 search & reranking across all indexed passages in Lumina.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "The search query"},
+                    "dept": {"type": "string", "description": "Optional department filter"},
+                    "session_id": {"type": "string", "description": "Optional session UUID for multi-tenant isolation"},
+                },
+                "required": ["query"],
+            },
+        },
+        {
+            "name": "list_documents",
+            "description": "Returns titles, chunk counts, and metadata for all holdings in the Lumina library.",
+            "input_schema": {"type": "object", "properties": {}},
+        },
+    ]
+
+
+class RAGQueryRequest(BaseModel):
+    query: str
+    dept: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+@router.post("/rag/query")
+def run_rag_query(req: RAGQueryRequest):
+    """Execute the query_knowledge_base MCP tool directly."""
+    from app.mcp_server import query_knowledge_base
+    result = query_knowledge_base(query=req.query, dept=req.dept, session_id=req.session_id)
+    return {"tool": "query_knowledge_base", "result": result}
+
+
+@router.get("/rag/documents")
+def run_list_documents():
+    """Execute the list_documents MCP tool directly."""
+    from app.mcp_server import list_documents
+    result = list_documents()
+    return {"tool": "list_documents", "result": result}
+
