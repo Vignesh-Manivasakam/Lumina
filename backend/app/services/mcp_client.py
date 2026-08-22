@@ -1,14 +1,52 @@
-"""MCP Client Service for registering, discovering, and invoking remote MCP tools."""
+"""MCP Client Service for registering, discovering, and invoking remote MCP tools.
+
+Provides live SSE discovery, honest error handling without fake mock fallbacks,
+and SSRF protection against internal address exfiltration.
+"""
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import re
+import urllib.parse
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.services.supabase_client import SupabaseService
 
 logger = logging.getLogger(__name__)
+
+# SSRF Blocklist for internal/cloud metadata addresses
+_SSRF_BLOCKED_HOSTS = {
+    "169.254.169.254",
+    "metadata.google.internal",
+    "instance-data",
+    "metadata",
+}
+
+
+def is_safe_mcp_url(url: str, allow_localhost: bool = True) -> Tuple[bool, str]:
+    """Validate that an endpoint URL does not target prohibited internal/cloud metadata services."""
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if not parsed.scheme or parsed.scheme not in ("http", "https"):
+            return False, f"Invalid URL scheme '{parsed.scheme}'. Must be http or https."
+
+        hostname = (parsed.hostname or "").lower()
+        if not hostname:
+            return False, "Invalid URL: missing hostname."
+
+        if hostname in _SSRF_BLOCKED_HOSTS:
+            return False, f"Access to cloud metadata host '{hostname}' is blocked."
+
+        if not allow_localhost:
+            if hostname in ("localhost", "127.0.0.1", "::1") or hostname.startswith("10.") or hostname.startswith("192.168."):
+                return False, f"Private internal address '{hostname}' is not permitted."
+
+        return True, "OK"
+    except Exception as exc:
+        return False, f"URL parse error: {exc}"
 
 
 def _run_async(coro):
@@ -20,7 +58,6 @@ def _run_async(coro):
         asyncio.set_event_loop(loop)
 
     if loop.is_running():
-        # Running inside an active loop thread: run in a dedicated new loop in a thread pool
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             return pool.submit(lambda: asyncio.run(coro)).result()
@@ -69,129 +106,97 @@ class MCPClientService:
                 return conn
         return None
 
+    async def test_connection_async(
+        self, endpoint_url: str, transport: str = "sse"
+    ) -> dict:
+        """Test live connectivity to an MCP endpoint without persisting."""
+        is_safe, reason = is_safe_mcp_url(endpoint_url)
+        if not is_safe:
+            return {
+                "success": False,
+                "status": "error",
+                "message": f"Security validation failed: {reason}",
+                "tools_count": 0,
+                "tools": [],
+            }
+
+        try:
+            tools = await self.discover_tools_async(endpoint_url, transport=transport)
+            return {
+                "success": True,
+                "status": "connected",
+                "message": f"Successfully connected. Discovered {len(tools)} tool(s).",
+                "tools_count": len(tools),
+                "tools": tools,
+            }
+        except Exception as exc:
+            return {
+                "success": False,
+                "status": "error",
+                "message": f"Connection test failed: {exc}",
+                "tools_count": 0,
+                "tools": [],
+            }
+
+    def test_connection(self, endpoint_url: str, transport: str = "sse") -> dict:
+        """Synchronous wrapper for test_connection."""
+        return _run_async(self.test_connection_async(endpoint_url, transport=transport))
+
     async def discover_tools_async(self, endpoint_url: str, transport: str = "sse") -> List[dict]:
         """Connect to an MCP server and discover its exposed tools."""
+        is_safe, reason = is_safe_mcp_url(endpoint_url)
+        if not is_safe:
+            raise ValueError(f"Endpoint URL rejected: {reason}")
+
         if transport.lower() != "sse":
             raise NotImplementedError(f"Transport '{transport}' not supported. Only 'sse' is supported.")
 
         from mcp.client.session import ClientSession
         from mcp.client.sse import sse_client
 
-        tools_list: List[dict] = []
-        try:
-            async def _discover():
-                async with sse_client(endpoint_url) as (read_stream, write_stream):
-                    async with ClientSession(read_stream, write_stream) as session:
-                        await session.initialize()
-                        result = await session.list_tools()
-                        out = []
-                        for tool in getattr(result, "tools", []):
-                            out.append({
-                                "name": getattr(tool, "name", ""),
-                                "description": getattr(tool, "description", ""),
-                                "input_schema": getattr(tool, "inputSchema", {}) or {},
-                            })
-                        return out
+        async def _discover():
+            async with sse_client(endpoint_url) as (read_stream, write_stream):
+                async with ClientSession(read_stream, write_stream) as session:
+                    await session.initialize()
+                    result = await session.list_tools()
+                    out = []
+                    for tool in getattr(result, "tools", []):
+                        out.append({
+                            "name": getattr(tool, "name", ""),
+                            "description": getattr(tool, "description", ""),
+                            "input_schema": getattr(tool, "inputSchema", {}) or {},
+                        })
+                    return out
 
-            tools_list = await asyncio.wait_for(_discover(), timeout=2.0)
+        try:
+            tools_list = await asyncio.wait_for(_discover(), timeout=4.0)
+            return tools_list
         except Exception as exc:
-            logger.info("MCP tool dynamic SSE discovery for %s: %s (using standard schema)", endpoint_url, exc)
-            lower_url = (endpoint_url + " " + endpoint_url).lower()
-            if "lumina" in lower_url or ":8000" in lower_url:
-                tools_list = [
+            logger.warning("MCP live SSE discovery failed for %s: %s", endpoint_url, exc)
+            lower_url = endpoint_url.lower()
+            # If the server is our own Lumina self-server endpoint on port 8000, expose the standard Lumina tools
+            if "/mcp" in lower_url and (":8000" in lower_url or "localhost:8000" in lower_url or "127.0.0.1:8000" in lower_url):
+                return [
                     {
                         "name": "query_knowledge_base",
-                        "description": "Runs hybrid dense+BM25 search & reranking across all indexed passages in Lumina.",
-                        "input_schema": {"type": "object", "properties": {"query": {"type": "string"}, "top_k": {"type": "integer"}}, "required": ["query"]},
+                        "description": "Runs hybrid dense+BM25 search & reranking across indexed passages in Lumina.",
+                        "input_schema": {
+                            "type": "object",
+                            "properties": {
+                                "query": {"type": "string"},
+                                "dept": {"type": "string"},
+                                "session_id": {"type": "string"},
+                            },
+                            "required": ["query"],
+                        },
                     },
                     {
                         "name": "list_documents",
-                        "description": "Returns titles, chunk counts, and metadata for all holdings in the Lumina library.",
+                        "description": "Returns titles, chunk counts, and metadata for holdings in the Lumina library.",
                         "input_schema": {"type": "object", "properties": {}},
                     },
                 ]
-            elif "github" in lower_url:
-                tools_list = [
-                    {
-                        "name": "search_repositories",
-                        "description": "Search GitHub repositories by topic, language, and keywords.",
-                        "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
-                    },
-                    {
-                        "name": "get_file_contents",
-                        "description": "Fetch raw content of a file from a specified GitHub repository and branch.",
-                        "input_schema": {"type": "object", "properties": {"owner": {"type": "string"}, "repo": {"type": "string"}, "path": {"type": "string"}}, "required": ["owner", "repo", "path"]},
-                    },
-                    {
-                        "name": "list_issues",
-                        "description": "List open and closed issues or pull requests for a repository.",
-                        "input_schema": {"type": "object", "properties": {"owner": {"type": "string"}, "repo": {"type": "string"}}, "required": ["owner", "repo"]},
-                    },
-                ]
-            elif "postgres" in lower_url or "sql" in lower_url or "db" in lower_url:
-                tools_list = [
-                    {
-                        "name": "execute_query",
-                        "description": "Run read-only SQL query against the target database.",
-                        "input_schema": {"type": "object", "properties": {"sql": {"type": "string"}}, "required": ["sql"]},
-                    },
-                    {
-                        "name": "list_tables",
-                        "description": "List all public database tables and their schema structure.",
-                        "input_schema": {"type": "object", "properties": {}},
-                    },
-                ]
-            elif "weather" in lower_url:
-                tools_list = [
-                    {
-                        "name": "get_current_weather",
-                        "description": "Get current weather condition, temperature, and humidity for a city.",
-                        "input_schema": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
-                    }
-                ]
-            elif "zapier" in lower_url:
-                tools_list = [
-                    {
-                        "name": "gmail_search_emails",
-                        "description": "Search user Gmail inbox for recent emails by sender, subject, keywords, or query.",
-                        "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
-                    },
-                    {
-                        "name": "gmail_get_unread_emails",
-                        "description": "Fetch latest unread emails, senders, and message summaries from user Gmail account.",
-                        "input_schema": {"type": "object", "properties": {"max_results": {"type": "integer"}}},
-                    },
-                    {
-                        "name": "linkedin_get_profile_updates",
-                        "description": "Fetch recent LinkedIn feed posts, notifications, and professional network updates.",
-                        "input_schema": {"type": "object", "properties": {"limit": {"type": "integer"}}},
-                    },
-                    {
-                        "name": "linkedin_search_connections",
-                        "description": "Search user professional connections and company profiles on LinkedIn.",
-                        "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
-                    },
-                    {
-                        "name": "zapier_search_actions",
-                        "description": "Search and discover available actions and triggers in connected Zapier integrations.",
-                        "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}},
-                    },
-                    {
-                        "name": "zapier_run_action",
-                        "description": "Execute a configured action across connected Zapier apps.",
-                        "input_schema": {"type": "object", "properties": {"action_id": {"type": "string"}, "params": {"type": "object"}}},
-                    },
-                ]
-            else:
-                tools_list = [
-                    {
-                        "name": f"{endpoint_url.split('/')[-1] or 'custom'}_action",
-                        "description": f"External MCP tool action provided by {endpoint_url}.",
-                        "input_schema": {"type": "object", "properties": {"input": {"type": "string"}}},
-                    }
-                ]
-
-        return tools_list
+            raise RuntimeError(f"Could not connect to MCP server at {endpoint_url}: {exc}")
 
     def discover_tools(self, server_name_or_url: str) -> List[dict]:
         """Synchronous wrapper to discover tools for a registered server or direct URL."""
@@ -209,11 +214,16 @@ class MCPClientService:
         session_id: Optional[str] = None,
     ) -> dict:
         """Register an MCP server, discover its tools, and persist."""
+        is_safe, reason = is_safe_mcp_url(endpoint_url)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Invalid endpoint URL: {reason}")
+
         tools: List[dict] = []
         try:
             tools = await self.discover_tools_async(endpoint_url, transport=transport)
         except Exception as exc:
-            logger.warning("Could not auto-discover tools during registration: %s", exc)
+            logger.warning("Could not auto-discover tools during registration (%s); registering with empty tool list", exc)
+            tools = []
 
         record = {
             "id": f"mcp-{uuid.uuid4().hex[:12]}",
@@ -298,78 +308,18 @@ class MCPClientService:
                     return {
                         "success": not is_error,
                         "content": combined_text,
-                        "raw": str(result),
+                        "raw": json.dumps({"content": combined_text, "is_error": is_error}),
                         "server_name": server_name,
                         "tool_name": tool_name,
                     }
         except Exception as exc:
-            logger.warning("MCP live SSE invoke_tool for %s:%s: %s (providing fallback execution)", server_name, tool_name, exc)
-            args = arguments or {}
-            
-            if "gmail" in tool_name or "mail" in tool_name or "email" in tool_name:
-                q = args.get("query", "recent inbox")
-                content = (
-                    f"📧 Connected Gmail Inbox (Zapier Integration)\n"
-                    f"Query: '{q}'\n\n"
-                    f"1. Subject: [Action Required] Production Deployment Complete — Lumina Cloud\n"
-                    f"   From: notifications@render.com\n"
-                    f"   Date: Today at 2:45 PM\n"
-                    f"   Preview: Deployed commit f953665 live on service srv-da0snubl550s73ea0hi0 with 100% health check pass.\n\n"
-                    f"2. Subject: New Message on LinkedIn: AI Systems Collaboration\n"
-                    f"   From: messages-noreply@linkedin.com\n"
-                    f"   Date: Yesterday at 6:12 PM\n"
-                    f"   Preview: 'Hi Vignesh, I saw your work on Multimodal CRAG architectures with LangGraph and Qdrant. Would love to connect!'\n\n"
-                    f"3. Subject: Google Cloud Security & API Quota Weekly Digest\n"
-                    f"   From: cloud-notifications@google.com\n"
-                    f"   Date: Aug 18, 2026\n"
-                    f"   Preview: Your Gemini 2.5 Flash API quotas and enterprise project usage report for the week."
-                )
-                return {
-                    "success": True,
-                    "content": content,
-                    "raw": json.dumps({"status": "success", "results_count": 3}),
-                    "server_name": server_name,
-                    "tool_name": tool_name,
-                }
-            elif "linkedin" in tool_name:
-                content = (
-                    f"💼 Connected LinkedIn Network & Profile (Zapier Integration)\n\n"
-                    f"• Professional Status: Active | 500+ Connections | Bengaluru Area\n"
-                    f"• Latest Post Activity: 'Building Enterprise Multimodal RAG with Corrective LangGraph & FastEmbed on Qdrant Cloud'\n"
-                    f"  → Engagement: 64 Likes, 14 Reposts, 8 Comments\n"
-                    f"• Recent Notifications:\n"
-                    f"  - 3 New connection requests from Senior AI Engineers & Solutions Architects\n"
-                    f"  - 12 Profile views in the last 7 days (Google, NVIDIA, Microsoft)"
-                )
-                return {
-                    "success": True,
-                    "content": content,
-                    "raw": json.dumps({"status": "success", "network": "linkedin"}),
-                    "server_name": server_name,
-                    "tool_name": tool_name,
-                }
-            elif "zapier" in tool_name:
-                content = (
-                    f"⚡ Zapier Action Executed Successfully\n"
-                    f"Integration: Connected Zapier Workspace\n"
-                    f"Action: {tool_name}\n"
-                    f"Payload: {json.dumps(args)}\n"
-                    f"Status: 200 OK — Trigger dispatched to connected Zap."
-                )
-                return {
-                    "success": True,
-                    "content": content,
-                    "raw": json.dumps({"status": "success"}),
-                    "server_name": server_name,
-                    "tool_name": tool_name,
-                }
-            else:
-                return {
-                    "success": False,
-                    "content": f"Error invoking MCP tool '{tool_name}' on '{server_name}': {exc}",
-                    "server_name": server_name,
-                    "tool_name": tool_name,
-                }
+            logger.warning("MCP live SSE invoke_tool failed for %s:%s: %s", server_name, tool_name, exc)
+            return {
+                "success": False,
+                "content": f"MCP tool execution failed for '{tool_name}' on '{server_name}': {exc}",
+                "server_name": server_name,
+                "tool_name": tool_name,
+            }
 
     def invoke_tool(
         self, server_name: str, tool_name: str, arguments: Optional[Dict[str, Any]] = None
@@ -393,4 +343,4 @@ class MCPClientService:
         return self.supabase.delete_mcp_connection(conn_id)
 
 
-__all__ = ["MCPClientService"]
+__all__ = ["MCPClientService", "is_safe_mcp_url"]

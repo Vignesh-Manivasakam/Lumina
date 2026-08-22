@@ -15,12 +15,23 @@ from typing import Any, Iterable, Optional
 logger = logging.getLogger(__name__)
 
 # Conservative patterns that bypass the LLM safety call entirely. Used
-# only to short-circuit obvious prompt-injection / PII requests.
+# to short-circuit obvious prompt-injection, jailbreaks, PII leakage, and SSRF requests.
 _BLOCKLIST_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"ignore (?:all )?previous instructions", re.IGNORECASE),
     re.compile(r"system prompt", re.IGNORECASE),
-    re.compile(r"reveal your (?:api ?key|instructions)", re.IGNORECASE),
+    re.compile(r"reveal your (?:api ?key|instructions|credentials|tokens)", re.IGNORECASE),
+    re.compile(r"print (?:the )?(?:initial|system) (?:prompt|instructions)", re.IGNORECASE),
+    re.compile(r"output (?:everything|all text) above", re.IGNORECASE),
+    re.compile(r"\b(?:DAN mode|jailbreak prompt|developer mode enabled)\b", re.IGNORECASE),
+    re.compile(r"\b(?:bypass (?:content|safety) (?:filter|policy|restrictions))\b", re.IGNORECASE),
+    re.compile(r"\b(?:disregard (?:all )?(?:prior|previous) safety rules)\b", re.IGNORECASE),
+    re.compile(r"\b(?:forget (?:all )?(?:instructions|guidelines) above)\b", re.IGNORECASE),
+    re.compile(r"\b(?:act as an unfiltered AI|unrestricted mode)\b", re.IGNORECASE),
+    re.compile(r"\b(?:169\.254\.169\.254|metadata\.google\.internal)\b", re.IGNORECASE),
+    re.compile(r"\b(?:dump (?:the )?(?:entire )?database|DROP TABLE|UNION SELECT)\b", re.IGNORECASE),
 )
+
+MAX_SAFE_QUERY_LENGTH = 10000
 
 
 class SafetyGuard:
@@ -50,6 +61,10 @@ class SafetyGuard:
         """
         if not text or not text.strip():
             return True
+
+        if len(text) > MAX_SAFE_QUERY_LENGTH:
+            logger.info("SafetyGuard: input exceeded maximum safe query length (%d chars).", len(text))
+            return False
 
         if self._has_blocklist_match(text):
             logger.info("SafetyGuard: blocklist match for input.")

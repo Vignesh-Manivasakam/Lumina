@@ -58,6 +58,9 @@ mcp>=1.2.0
 # --- Web Search Skill ---
 tavily-python>=0.5.0
 
+# --- Observability & Distributed Tracing ---
+langsmith>=0.1.0
+
 # --- Tests ---
 pytest>=8.0.0
 pytest-asyncio>=0.23.0

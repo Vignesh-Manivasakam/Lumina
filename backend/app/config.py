@@ -61,6 +61,18 @@ class Settings(BaseSettings):
     SESSION_HEADER: str = "X-Session-ID"
     SESSION_AUTO_ISSUE: bool = True
 
+    # ---- Observability (LangSmith Tracing) ----------------------------
+    LANGSMITH_API_KEY: str = ""
+    LANGSMITH_PROJECT: str = "lumina-rag"
+    LANGSMITH_TRACING: bool = True
+    LANGCHAIN_TRACING_V2: bool = True
+
+    # ---- Omni-Route Model Tiering ------------------------------------
+    OMNI_ROUTE_ENABLED: bool = True
+    OMNI_ROUTE_FAST_MODEL: str = "gemini-flash-lite-latest"
+    OMNI_ROUTE_STANDARD_MODEL: str = "gemini-3.6-flash"
+    OMNI_ROUTE_PREMIUM_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b"
+
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),
         env_file_encoding="utf-8",

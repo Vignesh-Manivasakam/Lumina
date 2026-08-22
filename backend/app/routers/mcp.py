@@ -1,4 +1,4 @@
-"""MCP client connections endpoints."""
+"""MCP client connections endpoints with live testing, tool discovery, and SSRF protection."""
 from __future__ import annotations
 
 import logging
@@ -7,12 +7,14 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
-from app.services.mcp_client import MCPClientService
+from app.services.mcp_client import MCPClientService, is_safe_mcp_url
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/mcp", tags=["MCP"])
 mcp_client_service = MCPClientService()
+
+MAX_CONNECTIONS_PER_SESSION = 10
 
 
 class MCPConnectionCreate(BaseModel):
@@ -23,12 +25,49 @@ class MCPConnectionCreate(BaseModel):
     session_id: Optional[str] = None
 
 
+class MCPTestRequest(BaseModel):
+    endpoint_url: str
+    transport: str = "sse"
+
+
+@router.post("/test")
+async def test_mcp_endpoint(data: MCPTestRequest):
+    """Test live connectivity and tool discovery for an MCP endpoint without registering."""
+    try:
+        result = await mcp_client_service.test_connection_async(
+            endpoint_url=data.endpoint_url, transport=data.transport
+        )
+        return result
+    except Exception as exc:
+        logger.exception("Failed to test MCP endpoint: %s", exc)
+        return {
+            "success": False,
+            "status": "error",
+            "message": str(exc),
+            "tools_count": 0,
+            "tools": [],
+        }
+
+
 @router.post("/connections")
 async def register_mcp_connection(data: MCPConnectionCreate, http_request: Request):
     """Register an external MCP server connection and discover its tools."""
     try:
+        # SSRF validation
+        is_safe, reason = is_safe_mcp_url(data.endpoint_url)
+        if not is_safe:
+            raise HTTPException(status_code=400, detail=f"Invalid endpoint URL: {reason}")
+
         trusted_session = getattr(http_request.state, "session_id", None)
         effective_session = data.session_id or trusted_session
+
+        # Check existing connection count
+        existing = mcp_client_service.list_connections(session_id=effective_session)
+        if len(existing) >= MAX_CONNECTIONS_PER_SESSION:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Connection limit reached ({MAX_CONNECTIONS_PER_SESSION} max connections per session).",
+            )
 
         record = await mcp_client_service.register_server_async(
             name=data.name,
@@ -38,6 +77,8 @@ async def register_mcp_connection(data: MCPConnectionCreate, http_request: Reque
             session_id=effective_session,
         )
         return record
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("Failed to register MCP server: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
@@ -60,6 +101,24 @@ async def list_mcp_connections(
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@router.get("/connections/{connection_id}/tools")
+async def discover_connection_tools(connection_id: str):
+    """Re-discover exposed tools for a registered MCP connection."""
+    try:
+        conn = mcp_client_service.get_connection(connection_id)
+        if not conn:
+            raise HTTPException(status_code=404, detail="MCP connection not found")
+        tools = await mcp_client_service.discover_tools_async(
+            conn.get("endpoint_url"), transport=conn.get("transport", "sse")
+        )
+        return {"connection_id": connection_id, "tools": tools, "count": len(tools)}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to discover tools for connection: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.delete("/connections/{connection_id}")
 async def remove_mcp_connection(connection_id: str):
     """Remove a registered MCP server connection."""
@@ -69,72 +128,3 @@ async def remove_mcp_connection(connection_id: str):
     except Exception as exc:
         logger.exception("Failed to delete MCP connection: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
-
-
-class MCPToolInvokeRequest(BaseModel):
-    server_name: str
-    tool_name: str
-    arguments: Optional[dict] = None
-
-
-@router.post("/invoke")
-async def invoke_mcp_tool(req: MCPToolInvokeRequest):
-    """Directly invoke a tool on a connected MCP server."""
-    try:
-        result = await mcp_client_service.invoke_tool_async(
-            server_name=req.server_name,
-            tool_name=req.tool_name,
-            arguments=req.arguments,
-        )
-        return result
-    except Exception as exc:
-        logger.exception("Failed to invoke MCP tool: %s", exc)
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-@router.get("/rag/tools")
-def get_rag_tools():
-    """List native Lumina RAG tools exposed via MCP."""
-    return [
-        {
-            "name": "query_knowledge_base",
-            "description": "Runs hybrid dense+BM25 search & reranking across all indexed passages in Lumina.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "The search query"},
-                    "dept": {"type": "string", "description": "Optional department filter"},
-                    "session_id": {"type": "string", "description": "Optional session UUID for multi-tenant isolation"},
-                },
-                "required": ["query"],
-            },
-        },
-        {
-            "name": "list_documents",
-            "description": "Returns titles, chunk counts, and metadata for all holdings in the Lumina library.",
-            "input_schema": {"type": "object", "properties": {}},
-        },
-    ]
-
-
-class RAGQueryRequest(BaseModel):
-    query: str
-    dept: Optional[str] = None
-    session_id: Optional[str] = None
-
-
-@router.post("/rag/query")
-def run_rag_query(req: RAGQueryRequest):
-    """Execute the query_knowledge_base MCP tool directly."""
-    from app.mcp_server import query_knowledge_base
-    result = query_knowledge_base(query=req.query, dept=req.dept, session_id=req.session_id)
-    return {"tool": "query_knowledge_base", "result": result}
-
-
-@router.get("/rag/documents")
-def run_list_documents():
-    """Execute the list_documents MCP tool directly."""
-    from app.mcp_server import list_documents
-    result = list_documents()
-    return {"tool": "list_documents", "result": result}
-

@@ -29,6 +29,9 @@ from app.graph.crag_graph import AGENT_ORDER, build_crag_graph
 
 from app.services.safety import SafetyGuard
 from app.middleware.session import SessionIsolationMiddleware
+from app.middleware.rate_limiter import RateLimiterMiddleware
+from app.services.observability import observability
+from app.services.usage_tracker import UsageTracker
 
 app = FastAPI(title="Lumina RAG API")
 
@@ -36,10 +39,12 @@ app = FastAPI(title="Lumina RAG API")
 from app.routers.voice import router as voice_router  # noqa: E402
 from app.routers.mcp import router as mcp_router  # noqa: E402
 from app.routers.conversations import router as conversations_router  # noqa: E402
+from app.routers.skills import router as skills_router  # noqa: E402
 
 app.include_router(voice_router)
 app.include_router(mcp_router)
 app.include_router(conversations_router)
+app.include_router(skills_router)
 
 # MCP server (Phase 1.7: tools only; full session scoping in Phase 2)
 from app.mcp_server import mcp  # noqa: E402
@@ -58,9 +63,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Phase 2: register session-isolation middleware (validates UUID, injects
-# request.state.session_id, auto-issues UUID for anonymous calls). Must
-# be added AFTER CORS so it sees the parsed headers.
+# Register rate limiting & session isolation middleware
+app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(SessionIsolationMiddleware)
 
 
@@ -104,6 +108,8 @@ pipeline = IngestionPipeline(
     qdrant=qdrant_store,
     embedder=embedder,
 )
+
+usage_tracker = UsageTracker(pipeline.supabase)
 
 
 class ChatRequest(BaseModel):
@@ -302,6 +308,35 @@ async def chat(request: ChatRequest, http_request: Request):
                 except Exception as exc:
                     print(f"[Supabase] Assistant message save error: {exc}")
 
+            # Calculate token usage and latency metrics
+            query_total_ms = int((time.monotonic() - retrieval_started_at) * 1000)
+            p_tok = max(1, int(len(request.query.split()) * 1.3) + 60)
+            c_tok = max(1, int(len(full_response.split()) * 1.3)) if full_response else 20
+            
+            # Record usage per session
+            try:
+                usage_tracker.record_query(
+                    session_id=effective_session or "anonymous",
+                    query=request.query,
+                    model=request.model or "default",
+                    route=result.get("route") or "simple",
+                    prompt_tokens=p_tok,
+                    completion_tokens=c_tok,
+                    latency_ms=query_total_ms,
+                )
+            except Exception as exc:
+                print(f"[UsageTracker] record error: {exc}")
+
+            # Emit usage_info SSE event
+            yield f"data: {json.dumps({'type': 'usage_info', 'usage': {
+                'prompt_tokens': p_tok,
+                'completion_tokens': c_tok,
+                'total_tokens': p_tok + c_tok,
+                'latency_ms': query_total_ms,
+                'model': request.model or 'default',
+                'route': result.get('route') or 'simple',
+            }})}\n\n"
+
             yield f"data: {json.dumps({'type': 'sources', 'sources': formatted_sources})}\n\n"
             yield "data: [DONE]\n\n"
 
@@ -456,5 +491,17 @@ async def list_recent_sessions():
     try:
         sessions = pipeline.supabase.list_sessions(limit=50)
         return sessions
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sessions/{session_id}/usage")
+async def get_session_usage_endpoint(session_id: str, http_request: Request):
+    """Retrieve cumulative token usage and latency metrics for a session."""
+    trusted_session: Optional[str] = getattr(http_request.state, "session_id", None)
+    if trusted_session and trusted_session != session_id:
+        raise HTTPException(status_code=403, detail="Session mismatch")
+    try:
+        return usage_tracker.get_session_usage(session_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

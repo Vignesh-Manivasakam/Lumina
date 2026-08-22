@@ -45,6 +45,24 @@ class ImageGenSkill(Skill):
     def description(self) -> str:
         return "Generates high-resolution images from textual descriptions using SDXL and Flux."
 
+    @property
+    def category(self) -> str:
+        return "creative"
+
+    @property
+    def tags(self) -> List[str]:
+        return ["image", "art", "drawing", "picture", "sdxl", "generate image", "illustration"]
+
+    @property
+    def parameters_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "prompt": {"type": "string", "description": "Text prompt describing the image to generate"}
+            },
+            "required": ["prompt"],
+        }
+
     def can_handle(self, state: dict) -> bool:
         return state.get("route") == "image_gen"
 

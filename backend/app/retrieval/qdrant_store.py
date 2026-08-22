@@ -190,8 +190,10 @@ class QdrantStore:
         :meth:`get_parents_for_children`.
         """
         effective_filters = dict(filters or {})
-        # Note: Do not hard-restrict to session_id if it excludes workspace library documents
-        if session_id and "session_id" in (filters or {}):
+        # Session Private Isolation:
+        # If session_id is provided, restrict search strictly to chunks belonging to this session
+        # (or chunks tagged as workspace/global)
+        if session_id:
             effective_filters["session_id"] = session_id
 
         must_conditions = [

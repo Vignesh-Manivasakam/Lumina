@@ -380,6 +380,63 @@ export async function deleteMCPConnection(connectionId: string): Promise<any> {
   return response.json();
 }
 
+export async function testMCPConnection(data: {
+  endpoint_url: string;
+  transport?: string;
+}): Promise<{ success: boolean; status: string; message: string; tools_count: number; tools: any[] }> {
+  const response = await fetch(`${API_URL}/api/mcp/test`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: 'MCP test request failed' }));
+    throw new Error(err.detail || 'MCP test request failed');
+  }
+  return response.json();
+}
+
+// ----- Skills API ----------------------------------------------------------
+
+export async function listSkills(category?: string): Promise<any[]> {
+  const url = new URL(`${API_URL}/api/skills`);
+  if (category) url.searchParams.set('category', category);
+
+  const response = await fetch(url.toString(), {
+    headers: getHeaders(),
+  });
+  if (!response.ok) throw new Error('Failed to list skills');
+  return response.json();
+}
+
+export async function listSkillCategories(): Promise<{ categories: string[] }> {
+  const response = await fetch(`${API_URL}/api/skills/categories`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) throw new Error('Failed to list skill categories');
+  return response.json();
+}
+
+// ----- Session Usage API ---------------------------------------------------
+
+export async function getSessionUsage(sessionId?: string): Promise<{
+  session_id: string;
+  total_queries: number;
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  total_tokens: number;
+  average_latency_ms: number;
+  tokens_by_model: Record<string, number>;
+  queries_by_route: Record<string, number>;
+}> {
+  const effectiveSession = sessionId || getOrCreateSessionUUID();
+  const response = await fetch(`${API_URL}/api/sessions/${effectiveSession}/usage`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) throw new Error('Failed to fetch session usage metrics');
+  return response.json();
+}
+
 // ----- Voice STT / TTS API -------------------------------------------------
 
 export async function transcribeAudio(

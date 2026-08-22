@@ -23,9 +23,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 class ProviderResponse:
-    """Wraps a non-streaming response so callers can use ``.content`` or ``.text``."""
+    """Wraps a non-streaming response so callers can use ``.content``, ``.text``, and ``.usage``."""
 
-    def __init__(self, content: Any = "", raw_response: Any = None) -> None:
+    def __init__(self, content: Any = "", raw_response: Any = None, usage: Optional[Dict[str, int]] = None) -> None:
         if raw_response is None and not isinstance(content, str):
             self._raw_response = content
             text_val = ""
@@ -40,6 +40,34 @@ class ProviderResponse:
             self._content = str(content) if content is not None else ""
             self._raw_response = raw_response
 
+        # Extract or estimate token usage
+        self._usage: Dict[str, int] = usage or {}
+        if not self._usage and self._raw_response:
+            # Check OpenAI / Groq usage
+            raw_usage = getattr(self._raw_response, "usage", None)
+            if raw_usage:
+                self._usage = {
+                    "prompt_tokens": getattr(raw_usage, "prompt_tokens", 0) or 0,
+                    "completion_tokens": getattr(raw_usage, "completion_tokens", 0) or 0,
+                    "total_tokens": getattr(raw_usage, "total_tokens", 0) or 0,
+                }
+            else:
+                # Check Gemini usage_metadata
+                gemini_usage = getattr(self._raw_response, "usage_metadata", None)
+                if gemini_usage:
+                    p_tok = getattr(gemini_usage, "prompt_token_count", 0) or 0
+                    c_tok = getattr(gemini_usage, "candidates_token_count", 0) or 0
+                    self._usage = {
+                        "prompt_tokens": p_tok,
+                        "completion_tokens": c_tok,
+                        "total_tokens": p_tok + c_tok,
+                    }
+
+        if not self._usage:
+            # Fallback estimation
+            est_comp = max(1, int(len(self._content.split()) * 1.3))
+            self._usage = {"prompt_tokens": 50, "completion_tokens": est_comp, "total_tokens": 50 + est_comp}
+
     @property
     def content(self) -> str:
         return self._content
@@ -48,9 +76,13 @@ class ProviderResponse:
     def text(self) -> str:
         return self._content
 
+    @property
+    def usage(self) -> Dict[str, int]:
+        return self._usage
+
     def __repr__(self) -> str:
         preview = (self._content[:40] + "...") if len(self._content) > 40 else self._content
-        return f"<ProviderResponse content={preview!r}>"
+        return f"<ProviderResponse content={preview!r} tokens={self._usage.get('total_tokens', 0)}>"
 
 
 class ProviderStreamChunk:
@@ -848,6 +880,22 @@ class ProviderRegistry:
 
         cls._instances[cache_key] = provider
         return provider
+
+    @classmethod
+    def get_omni_route_model(cls, task_name: str, complexity: str = "simple") -> str:
+        """Select an optimal cost-effective model tier based on task role and query complexity."""
+        if not getattr(settings, "OMNI_ROUTE_ENABLED", True):
+            provider_type = cls.resolve_provider_type()
+            return cls.get_task_model_map(provider_type).get(task_name, "")
+
+        fast_tasks = ("router", "grader", "rewriter", "safety", "contextual_headers", "header")
+        if task_name in fast_tasks:
+            return getattr(settings, "OMNI_ROUTE_FAST_MODEL", "gemini-flash-lite-latest")
+
+        if complexity in ("complex", "multi_hop", "deep_reasoning", "code_analysis") and getattr(settings, "OMNI_ROUTE_PREMIUM_MODEL", ""):
+            return getattr(settings, "OMNI_ROUTE_PREMIUM_MODEL", settings.OMNI_ROUTE_STANDARD_MODEL)
+
+        return getattr(settings, "OMNI_ROUTE_STANDARD_MODEL", "gemini-3.6-flash")
 
     @classmethod
     def reset(cls) -> None:

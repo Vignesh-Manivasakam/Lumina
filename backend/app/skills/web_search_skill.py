@@ -39,6 +39,24 @@ class WebSearchSkill(Skill):
     def description(self) -> str:
         return "Searches the live web using Tavily API for real-time information and citations."
 
+    @property
+    def category(self) -> str:
+        return "search"
+
+    @property
+    def tags(self) -> List[str]:
+        return ["web", "search", "internet", "google", "live", "news", "citations"]
+
+    @property
+    def parameters_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "The search query to look up on the web"}
+            },
+            "required": ["query"],
+        }
+
     def can_handle(self, state: dict) -> bool:
         return state.get("route") == "web_search"
 

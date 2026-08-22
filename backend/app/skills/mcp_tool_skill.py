@@ -54,6 +54,26 @@ If no tool is suitable, respond with:
     def description(self) -> str:
         return "Dispatches queries to external Model Context Protocol (MCP) server tools."
 
+    @property
+    def category(self) -> str:
+        return "integration"
+
+    @property
+    def tags(self) -> List[str]:
+        return ["mcp", "tool", "integration", "zapier", "gmail", "github", "postgres", "weather"]
+
+    @property
+    def parameters_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "server_name": {"type": "string", "description": "Name of the registered MCP server"},
+                "tool_name": {"type": "string", "description": "Name of the tool to invoke"},
+                "arguments": {"type": "object", "description": "Arguments passed to the tool"},
+            },
+            "required": ["server_name", "tool_name"],
+        }
+
     def can_handle(self, state: dict) -> bool:
         return state.get("route") == "mcp_tool"
 

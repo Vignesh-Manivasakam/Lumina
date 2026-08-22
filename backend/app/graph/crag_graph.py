@@ -10,9 +10,13 @@ from app.agents.grader import GraderAgent
 from app.agents.retriever import RetrieverAgent
 from app.agents.rewriter import RewriterAgent
 from app.agents.router import RouterAgent
+from app.skills.code_analysis_skill import CodeAnalysisSkill
+from app.skills.data_extraction_skill import DataExtractionSkill
+from app.skills.deep_reasoning_skill import DeepReasoningSkill
 from app.skills.image_gen_skill import ImageGenSkill
 from app.skills.mcp_tool_skill import MCPToolSkill
 from app.skills.skill_registry import SkillRegistry, default_skill_registry
+from app.skills.summarization_skill import SummarizationSkill
 from app.skills.web_search_skill import WebSearchSkill
 
 logger = logging.getLogger(__name__)
@@ -89,6 +93,10 @@ def _create_default_registry() -> SkillRegistry:
     registry.register(WebSearchSkill())
     registry.register(ImageGenSkill())
     registry.register(MCPToolSkill())
+    registry.register(DeepReasoningSkill())
+    registry.register(CodeAnalysisSkill())
+    registry.register(SummarizationSkill())
+    registry.register(DataExtractionSkill())
     return registry
 
 
@@ -118,9 +126,17 @@ def build_crag_graph(
 
     def route_decision(state: RAGState) -> str:
         route = state.get("route")
-        if route in ("web_search", "image_gen", "mcp_tool"):
+        if route in (
+            "web_search",
+            "image_gen",
+            "mcp_tool",
+            "deep_reasoning",
+            "code_analysis",
+            "summarization",
+            "data_extraction",
+        ):
             return "skill_executor"
-        if route == "direct":
+        if route in ("direct", "llm_direct"):
             return "generator"
         return "retriever"
 

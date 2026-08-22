@@ -46,8 +46,11 @@ htmlcov/
 # Local cache & data
 graphify-out/
 .swarm/
+.playwright-mcp/
 *.local_documents.json
 *.local_mcp.json
+*.local_usage.json
+.local_usage.json
 *.tsbuildinfo
 *.wav
 

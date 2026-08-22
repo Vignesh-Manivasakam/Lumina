@@ -58,6 +58,15 @@ class CPUReranker:
     # Public API
     # ------------------------------------------------------------------
 
+    def _lexical_score(self, query: str, text: str) -> float:
+        """Simple token overlap score as fallback when FlashRank is not active."""
+        q_tokens = set(query.lower().split())
+        if not q_tokens:
+            return 0.5
+        t_lower = text.lower()
+        matches = sum(1 for tok in q_tokens if tok in t_lower)
+        return min(0.5 + 0.5 * (matches / max(len(q_tokens), 1)), 0.99)
+
     def rerank(self, query: str, passages, top_k: Optional[int] = None) -> list:
         """Rerank ``passages`` against ``query``.
 
@@ -75,7 +84,12 @@ class CPUReranker:
 
         if isinstance(passages[0], str):
             if ranker is None:
-                return [{"id": str(i), "text": t, "rerank_score": max(0.9 - (i * 0.05), 0.1)} for i, t in enumerate(passages[:top_k])]
+                scored = [
+                    {"id": str(i), "text": t, "rerank_score": self._lexical_score(query, t)}
+                    for i, t in enumerate(passages)
+                ]
+                scored.sort(key=lambda x: x["rerank_score"], reverse=True)
+                return scored[:top_k] if top_k is not None else scored
             try:
                 items = [{"id": str(i), "text": t} for i, t in enumerate(passages)]
                 request = RerankRequest(query=query, passages=items)
@@ -91,7 +105,12 @@ class CPUReranker:
                 return res[:top_k] if top_k is not None else res
             except Exception as err:
                 logger.warning("FlashRank rerank failed (%s); using default score order", err)
-                return [{"id": str(i), "text": t, "rerank_score": max(0.9 - (i * 0.05), 0.1)} for i, t in enumerate(passages[:top_k])]
+                scored = [
+                    {"id": str(i), "text": t, "rerank_score": self._lexical_score(query, t)}
+                    for i, t in enumerate(passages)
+                ]
+                scored.sort(key=lambda x: x["rerank_score"], reverse=True)
+                return scored[:top_k] if top_k is not None else scored
 
         # Object/dict path - preserve original objects, just attach rerank_score
         ids = []
@@ -113,10 +132,10 @@ class CPUReranker:
                 results = ranker.rerank(request)
                 score_map = {str(r.get("id")): float(r.get("score", 0.0)) for r in results}
             except Exception as err:
-                logger.warning("FlashRank rerank failed (%s); using default score order", err)
-                score_map = {pid: max(0.9 - (idx * 0.05), 0.1) for idx, pid in enumerate(ids)}
+                logger.warning("FlashRank rerank failed (%s); using lexical scoring", err)
+                score_map = {item["id"]: self._lexical_score(query, item["text"]) for item in items}
         else:
-            score_map = {pid: max(0.9 - (idx * 0.05), 0.1) for idx, pid in enumerate(ids)}
+            score_map = {item["id"]: self._lexical_score(query, item["text"]) for item in items}
 
         annotated: list = []
         for original, pid in zip(passages, ids):

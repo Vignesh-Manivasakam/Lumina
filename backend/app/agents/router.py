@@ -48,7 +48,19 @@ _WEB_SEARCH_RE = re.compile(
 )
 
 _MCP_TOOL_RE = re.compile(
-    r"\b(?:mcp\s+tool|call\s+mcp|invoke\s+mcp|use\s+mcp|mcp:|zapier|gmail|email|emails|mail|inbox|linkedin)\b",
+    r"\b(?:mcp\s+tool|call\s+mcp|invoke\s+mcp|use\s+mcp|mcp:)\b",
+    re.IGNORECASE,
+)
+
+# Heuristic pattern for direct LLM general knowledge, math, coding, creative generation
+_DIRECT_LLM_RE = re.compile(
+    r"^(?:\s*(?:what\s+is|calculate|compute|solve)?\s*[\d\s\+\-\*\/\^\(\)\.\%]+[?\s]*$)|"
+    r"(?:\b(?:write\s+(?:a\s+|me\s+)?(?:python|javascript|typescript|c\+\+|java|go|rust|sql|html|css|bash|code|function|script|class|program)|"
+    r"how\s+to\s+(?:code|write\s+a\s+function|implement\s+in)|debug\s+(?:this\s+)?(?:code|error|traceback)|"
+    r"translate\s+(?:this\s+|the\s+following\s+)?to\s+[a-zA-Z]+|"
+    r"write\s+(?:an?\s+)?(?:poem|essay|story|song|haiku|joke|email\s+draft|cover\s+letter)|"
+    r"explain\s+(?:how\s+photosynthesis\s+works|quantum\s+computing|relativity|gravity|dna)|"
+    r"what\s+is\s+(?:the\s+capital\s+of|photosynthesis|gravity|a\s+monad|a\s+closure))\b)",
     re.IGNORECASE,
 )
 
@@ -60,8 +72,9 @@ class RouterAgent:
 Given a user query, classify both the routing strategy and query type.
 
 Routing categories:
-- simple: single factual question answerable from one document passage
-- complex: requires synthesizing multiple sources, comparisons, or multi-step reasoning
+- llm_direct: general knowledge, coding assistance, math calculations, logical reasoning, creative writing, or definitions that do NOT require searching uploaded documents
+- simple: single factual question about uploaded documents or specific company records answerable from one passage
+- complex: requires synthesizing multiple uploaded documents, cross-source comparisons, or multi-step reasoning over indexed holdings
 - multimodal: asks about a chart, diagram, image, or visual layout
 - direct: greetings, small talk, meta questions about the assistant
 - image_gen: requests to generate, create, or draw an image
@@ -133,6 +146,8 @@ Output ONLY the rewritten standalone query string with no commentary, formatting
             return "web_search", "web_search"
         if _MCP_TOOL_RE.search(q):
             return "mcp_tool", "mcp_tool"
+        if _DIRECT_LLM_RE.search(q):
+            return "llm_direct", "semantic"
         return None
 
     def route(self, state: dict) -> dict:
@@ -204,14 +219,14 @@ Output ONLY the rewritten standalone query string with no commentary, formatting
             except Exception:
                 # Handle single-word classification fallback
                 clean_word = content.strip().lower().strip('"\'')
-                if clean_word in ("simple", "complex", "multimodal", "direct", "image_gen", "web_search", "mcp_tool"):
+                if clean_word in ("simple", "complex", "multimodal", "direct", "llm_direct", "image_gen", "web_search", "mcp_tool"):
                     route = clean_word
         except Exception as exc:
             logger.warning("Router LLM call failed: %s; defaulting to simple", exc)
             route = "simple"
 
         # Validate against allowed routes
-        allowed_routes = ("simple", "complex", "multimodal", "direct", "image_gen", "web_search", "mcp_tool")
+        allowed_routes = ("simple", "complex", "multimodal", "direct", "llm_direct", "image_gen", "web_search", "mcp_tool")
         if route not in allowed_routes:
             route = "simple"
 
