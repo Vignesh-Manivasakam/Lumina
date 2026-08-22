@@ -52,6 +52,20 @@ _MCP_TOOL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Heuristic patterns for specialized skills
+_CONTRACT_RISK_RE = re.compile(
+    r"\b(?:review\s+(?:the\s+)?contract|assess\s+risk\s+in\s+(?:the\s+)?(?:contract|agreement|nda|msa|sow)|"
+    r"redline\s+(?:the\s+)?(?:nda|msa|sow|contract|agreement)|contract\s+risk\s+analysis|"
+    r"indemnity\s+clause\s+risk|liability\s+cap\s+risk|silent\s+clauses\s+in\s+contract)\b",
+    re.IGNORECASE,
+)
+
+_CAUSAL_RE = re.compile(
+    r"\b(?:why\s+did\s+.+\s+(?:drop|spike|fail|increase|decrease|change|crash|slow\s+down)|"
+    r"root\s+cause\s+of|what\s+caused\s+.+|post-?mortem\s+for|5-?whys\s+analysis|causal\s+analysis\s+of)\b",
+    re.IGNORECASE,
+)
+
 # Heuristic pattern for direct LLM general knowledge, math, coding, creative generation
 _DIRECT_LLM_RE = re.compile(
     r"^(?:\s*(?:what\s+is|calculate|compute|solve)?\s*[\d\s\+\-\*\/\^\(\)\.\%]+[?\s]*$)|"
@@ -73,6 +87,8 @@ Given a user query, classify both the routing strategy and query type.
 
 Routing categories:
 - llm_direct: general knowledge, coding assistance, math calculations, logical reasoning, creative writing, or definitions that do NOT require searching uploaded documents
+- contract_risk: requests to review, audit, assess risk, or redline commercial contracts/NDAs/MSAs
+- causal_reasoning: requests investigating root causes, "why" questions, anomalies, or post-mortems
 - simple: single factual question about uploaded documents or specific company records answerable from one passage
 - complex: requires synthesizing multiple uploaded documents, cross-source comparisons, or multi-step reasoning over indexed holdings
 - multimodal: asks about a chart, diagram, image, or visual layout
@@ -146,6 +162,10 @@ Output ONLY the rewritten standalone query string with no commentary, formatting
             return "web_search", "web_search"
         if _MCP_TOOL_RE.search(q):
             return "mcp_tool", "mcp_tool"
+        if _CONTRACT_RISK_RE.search(q):
+            return "contract_risk", "semantic"
+        if _CAUSAL_RE.search(q):
+            return "causal_reasoning", "multi_hop"
         if _DIRECT_LLM_RE.search(q):
             return "llm_direct", "semantic"
         return None
@@ -219,14 +239,25 @@ Output ONLY the rewritten standalone query string with no commentary, formatting
             except Exception:
                 # Handle single-word classification fallback
                 clean_word = content.strip().lower().strip('"\'')
-                if clean_word in ("simple", "complex", "multimodal", "direct", "llm_direct", "image_gen", "web_search", "mcp_tool"):
+                if clean_word in ("simple", "complex", "multimodal", "direct", "llm_direct", "image_gen", "web_search", "mcp_tool", "contract_risk", "causal_reasoning"):
                     route = clean_word
         except Exception as exc:
             logger.warning("Router LLM call failed: %s; defaulting to simple", exc)
             route = "simple"
 
         # Validate against allowed routes
-        allowed_routes = ("simple", "complex", "multimodal", "direct", "llm_direct", "image_gen", "web_search", "mcp_tool")
+        allowed_routes = (
+            "simple",
+            "complex",
+            "multimodal",
+            "direct",
+            "llm_direct",
+            "image_gen",
+            "web_search",
+            "mcp_tool",
+            "contract_risk",
+            "causal_reasoning",
+        )
         if route not in allowed_routes:
             route = "simple"
 

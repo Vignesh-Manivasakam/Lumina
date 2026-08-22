@@ -10,7 +10,9 @@ from app.agents.grader import GraderAgent
 from app.agents.retriever import RetrieverAgent
 from app.agents.rewriter import RewriterAgent
 from app.agents.router import RouterAgent
+from app.skills.causal_reasoning_skill import DeepCausalReasoningSkill
 from app.skills.code_analysis_skill import CodeAnalysisSkill
+from app.skills.contract_risk_skill import ContractRiskAnalyzerSkill
 from app.skills.data_extraction_skill import DataExtractionSkill
 from app.skills.deep_reasoning_skill import DeepReasoningSkill
 from app.skills.image_gen_skill import ImageGenSkill
@@ -97,6 +99,8 @@ def _create_default_registry() -> SkillRegistry:
     registry.register(CodeAnalysisSkill())
     registry.register(SummarizationSkill())
     registry.register(DataExtractionSkill())
+    registry.register(ContractRiskAnalyzerSkill())
+    registry.register(DeepCausalReasoningSkill())
     return registry
 
 
@@ -134,6 +138,10 @@ def build_crag_graph(
             "code_analysis",
             "summarization",
             "data_extraction",
+            "contract_risk",
+            "contract-risk-analyzer",
+            "causal_reasoning",
+            "deep-causal-reasoning",
         ):
             return "skill_executor"
         if route in ("direct", "llm_direct"):
