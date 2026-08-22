@@ -137,9 +137,10 @@ def run_ingestion_task(file_path: str, dept: str, doc_id: str, session_id: Optio
 
 # --- Endpoints --------------------------------------------------------------
 
+@app.get("/")
 @app.get("/health")
 def health():
-    return {"status": "ok", "message": "Multimodal RAG API is healthy"}
+    return {"status": "ok", "service": "lumina-backend", "version": "2.0.0", "message": "Multimodal RAG API is healthy"}
 
 
 @app.post("/api/chat")
