@@ -158,3 +158,22 @@ export type SSEEvent =
   | { type: 'voice_audio'; audio_b64: string; format?: string }
   | { type: 'error'; content: string }
   | { type: 'done' };
+
+// ---------------------------------------------------------------
+// Dynamic Skills Interface
+// ---------------------------------------------------------------
+
+export interface SkillItem {
+  name: string;
+  category: string;
+  title?: string;
+  description: string;
+  triggers?: string[];
+  tags?: string[];
+  is_custom?: boolean;
+  session_id?: string | null;
+  confidence_threshold?: number;
+  prompt?: string;
+  parameters_schema?: Record<string, any>;
+}
+

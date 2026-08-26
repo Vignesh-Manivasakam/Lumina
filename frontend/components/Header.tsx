@@ -4,6 +4,7 @@ import React from 'react';
 import {
   Menu,
   Moon,
+  Sparkles,
   Sun,
   X,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ interface HeaderProps {
   activeConversation?: Conversation | null;
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
+  onOpenSkillsModal?: () => void;
 }
 
 export function Header({
@@ -24,6 +26,7 @@ export function Header({
   activeConversation,
   darkMode = false,
   onToggleDarkMode,
+  onOpenSkillsModal,
 }: HeaderProps) {
   return (
     <header className="h-16 px-4 md:px-8 flex items-center justify-between shrink-0 select-none bg-transparent border-b border-[#EDF3FA] dark:border-slate-800/80">
@@ -47,8 +50,19 @@ export function Header({
         )}
       </div>
 
-      {/* Right side: ONLY Dark / Light Mode Toggle */}
-      <div className="flex items-center">
+      {/* Right side: Skills Hub button & Dark / Light Mode Toggle */}
+      <div className="flex items-center gap-2">
+        {onOpenSkillsModal && (
+          <button
+            onClick={onOpenSkillsModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-lumina-600 dark:hover:text-lumina-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-[#EDF3FA] dark:border-slate-800 hover:border-[#DCE5F2] dark:hover:border-slate-700 shadow-2xs"
+            title="Manage Cognitive Skills & Add Custom Skills"
+          >
+            <Sparkles size={14} className="text-lumina-500" />
+            <span className="hidden sm:inline">Cognitive Skills</span>
+          </button>
+        )}
+
         {onToggleDarkMode && (
           <button
             onClick={onToggleDarkMode}

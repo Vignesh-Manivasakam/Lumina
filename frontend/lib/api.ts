@@ -475,3 +475,55 @@ export async function synthesizeSpeech(
   }
   return response.blob();
 }
+
+// ----- Dynamic Skills & Session Skills API ---------------------------------
+
+export async function fetchSkills(category?: string): Promise<import('./types').SkillItem[]> {
+  const url = category ? `${API_URL}/api/skills?category=${encodeURIComponent(category)}` : `${API_URL}/api/skills`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch skills: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function fetchSkillCategories(): Promise<string[]> {
+  const response = await fetch(`${API_URL}/api/skills/categories`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch skill categories: ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data.categories || [];
+}
+
+export async function createCustomSkill(content: string): Promise<{ success: boolean; skill: any; message: string }> {
+  const response = await fetch(`${API_URL}/api/skills/custom`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ content }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: 'Failed to create custom skill' }));
+    throw new Error(err.detail || 'Failed to create custom skill');
+  }
+  return response.json();
+}
+
+export async function deleteCustomSkill(skillName: string): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_URL}/api/skills/custom/${encodeURIComponent(skillName)}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: 'Failed to delete custom skill' }));
+    throw new Error(err.detail || 'Failed to delete custom skill');
+  }
+  return response.json();
+}
+

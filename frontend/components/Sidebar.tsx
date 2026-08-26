@@ -35,6 +35,7 @@ interface SidebarProps {
   onNewConversation: () => void;
   mcpConnections: MCPConnection[];
   onOpenMCPModal: () => void;
+  onOpenSkillsModal?: () => void;
   queriesRunCount?: number;
   tokensUsedCount?: number;
 }
@@ -52,6 +53,7 @@ export function Sidebar({
   onNewConversation,
   mcpConnections,
   onOpenMCPModal,
+  onOpenSkillsModal,
   queriesRunCount = 0,
   tokensUsedCount = 0,
 }: SidebarProps) {
@@ -391,6 +393,15 @@ export function Sidebar({
                   </div>
                 );
               })}
+
+              {onOpenSkillsModal && (
+                <button
+                  onClick={onOpenSkillsModal}
+                  className="w-full py-2 px-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+                >
+                  <Zap size={13} className="text-lumina-500" /> Manage Cognitive Skills
+                </button>
+              )}
 
               <button
                 onClick={onOpenMCPModal}

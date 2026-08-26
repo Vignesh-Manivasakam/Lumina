@@ -30,6 +30,7 @@ import { Sidebar } from '../components/Sidebar';
 import { MessageList } from '../components/MessageList';
 import { ChatInput } from '../components/ChatInput';
 import { MCPModal } from '../components/MCPModal';
+import { SkillsModal } from '../components/SkillsModal';
 
 export default function Home() {
   const [sessionUUID, setSessionUUID] = useState<string>('');
@@ -48,6 +49,7 @@ export default function Home() {
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [mcpModalOpen, setMcpModalOpen] = useState<boolean>(false);
+  const [skillsModalOpen, setSkillsModalOpen] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [lifetimeQueries, setLifetimeQueries] = useState<number>(0);
   const [tokensUsed, setTokensUsed] = useState<number>(0);
@@ -345,19 +347,21 @@ export default function Home() {
         onNewConversation={handleNewConversation}
         mcpConnections={mcpConnections}
         onOpenMCPModal={() => setMcpModalOpen(true)}
+        onOpenSkillsModal={() => setSkillsModalOpen(true)}
         queriesRunCount={totalQueriesRun}
         tokensUsedCount={tokensUsed}
       />
 
       {/* ─── 2. Main Research Workspace Area ───────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-        {/* Top-Right Utility Header: ONLY Dark/Light mode toggle */}
+        {/* Top-Right Utility Header */}
         <Header
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
           activeConversation={activeConversation}
           darkMode={darkMode}
           onToggleDarkMode={toggleDarkMode}
+          onOpenSkillsModal={() => setSkillsModalOpen(true)}
         />
 
         {/* Workspace Canvas */}
@@ -417,6 +421,12 @@ export default function Home() {
         onClose={() => setMcpModalOpen(false)}
         connections={mcpConnections}
         onRefreshConnections={loadMCPConnections}
+      />
+
+      {/* ─── 4. Cognitive Skills Hub Modal ─────────────────────────── */}
+      <SkillsModal
+        isOpen={skillsModalOpen}
+        onClose={() => setSkillsModalOpen(false)}
       />
     </div>
   );
