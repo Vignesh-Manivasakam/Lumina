@@ -15,7 +15,7 @@ import httpx
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger("render_manager")
 
-RENDER_API_KEY = os.getenv("RENDER_API_KEY", "rnd_dsf3Wg1vpynzUzZJgJFbX7GdOPVZ")
+RENDER_API_KEY = os.getenv("RENDER_API_KEY", "")
 RENDER_API_BASE = "https://api.render.com/v1"
 FRONTEND_URL = "https://lumina-frontend-ma7n.onrender.com"
 
@@ -155,8 +155,69 @@ class RenderManager:
         return report
 
 
+    def trigger_deploy(self, service_id: str, clear_cache: bool = False) -> Optional[Dict[str, Any]]:
+        """Trigger a new deploy for a service on Render."""
+        url = f"{RENDER_API_BASE}/services/{service_id}/deploys"
+        body = {"clearCache": "clear" if clear_cache else "do_not_clear"}
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                res = client.post(url, headers=self.headers, json=body)
+                if res.status_code in (200, 201):
+                    logger.info(f"Triggered deploy for service {service_id}: {res.json().get('id')}")
+                    return res.json()
+                logger.error(f"Failed to trigger deploy for {service_id}: {res.status_code} - {res.text}")
+                return None
+        except Exception as exc:
+            logger.error(f"Error triggering deploy for {service_id}: {exc}")
+            return None
+
+    def wait_for_deploy(self, service_id: str, max_wait_seconds: int = 360, poll_interval: int = 15) -> str:
+        """Poll until latest deploy reaches 'live' or terminal failure."""
+        import time
+        start_time = time.time()
+        logger.info(f"Waiting for deploy on service {service_id} (timeout: {max_wait_seconds}s)...")
+        while time.time() - start_time < max_wait_seconds:
+            deploys = self.get_latest_deploys(service_id, limit=1)
+            if deploys:
+                status = deploys[0].get("status", "unknown")
+                commit = deploys[0].get("commit", {}).get("message", "")
+                logger.info(f"Deploy status for {service_id}: '{status}' [{commit[:40]}] ({int(time.time() - start_time)}s elapsed)")
+                if status == "live":
+                    return "live"
+                if status in ("build_failed", "deploy_failed", "canceled", "deactivated"):
+                    return status
+            time.sleep(poll_interval)
+        return "timeout"
+
+
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Render Cloud Manager")
+    parser.add_argument("--trigger-all", action="store_true", help="Trigger deploy for both frontend and backend")
+    parser.add_argument("--wait", action="store_true", help="Wait for deployments to finish")
+    args = parser.parse_args()
+
     manager = RenderManager()
+    services = manager.list_services()
+
+    backend_svc = next((s for s in services if "backend" in (s.get("name") or "").lower()), None)
+    frontend_svc = next((s for s in services if "frontend" in (s.get("name") or "").lower()), None)
+
+    if args.trigger_all:
+        if backend_svc:
+            manager.trigger_deploy(backend_svc["id"])
+        if frontend_svc:
+            manager.trigger_deploy(frontend_svc["id"])
+
+    if args.wait:
+        if backend_svc:
+            be_status = manager.wait_for_deploy(backend_svc["id"])
+            print(f"Backend deploy finished: {be_status}")
+        if frontend_svc:
+            fe_status = manager.wait_for_deploy(frontend_svc["id"])
+            print(f"Frontend deploy finished: {fe_status}")
+
     inspection = manager.inspect_cluster()
     print("\n--- Render Cluster Inspection Summary ---")
     print(json.dumps(inspection, indent=2))
+

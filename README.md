@@ -1,423 +1,652 @@
-# Lumina
+# Lumina — Enterprise Multimodal Adaptive CRAG & MCP Hub
 
 <div align="center">
 
-<img src="assets/Lumina.png" alt="Lumina logo" width="360" />
+![Lumina Header Banner](assets/Lumina.png)
 
-**A multimodal, agentic retrieval workspace for asking grounded questions over documents, media, live web results, and MCP-connected tools.**
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI_0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Frontend-Next.js_14-black?logo=next.js&logoColor=white)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4+-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![LangGraph](https://img.shields.io/badge/Agentic_Core-LangGraph-FF6F00)](https://langchain-ai.github.io/langgraph/)
+[![Qdrant](https://img.shields.io/badge/Vector_DB-Qdrant_Cloud-DC2626?logo=qdrant&logoColor=white)](https://qdrant.tech)
+[![FastEmbed](https://img.shields.io/badge/Embeddings-FastEmbed_BGE_+_BM25-4F46E5)](https://qdrant.github.io/fastembed/)
+[![FlashRank](https://img.shields.io/badge/Reranker-FlashRank_MiniLM-EC4899)](https://github.com/PrithivirajDamodaran/FlashRank)
+[![MCP](https://img.shields.io/badge/Protocol-Model_Context_Protocol-8B5CF6?logo=anthropic&logoColor=white)](https://modelcontextprotocol.io)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[![Backend](https://img.shields.io/badge/backend-FastAPI-009688?logo=fastapi&logoColor=white)](backend/app/main.py)
-[![Frontend](https://img.shields.io/badge/frontend-Next.js%2014-black?logo=next.js)](frontend)
-[![Language](https://img.shields.io/badge/language-Python%20%2B%20TypeScript-3776AB)](#technology)
-[![Vector search](https://img.shields.io/badge/vector%20search-Qdrant-DC244C)](https://qdrant.tech/)
-[![Orchestration](https://img.shields.io/badge/orchestration-LangGraph-1C3C3C)](https://langchain-ai.github.io/langgraph/)
+**A 100% free-tier, enterprise-grade Multimodal Corrective Retrieval-Augmented Generation (CRAG) system and Model Context Protocol (MCP) Hub.**  
+*Upload documents, audio, and images; watch 5 autonomous agents self-correct and reason in real-time; and expose or connect external MCP tools with zero GPU requirements and zero proprietary SaaS lock-in.*
 
 </div>
 
-> [!IMPORTANT]
-> Lumina is a self-hosted application, not a hosted service. Running a complete knowledge-search workflow requires a reachable Qdrant instance and at least one configured LLM provider. Supabase, voice, web search, reranking, and MCP connections are optional integrations with deliberate fallbacks where implemented.
+---
 
-## Contents
+## 📑 Table of Contents
 
-- [What Lumina does](#what-lumina-does)
-- [Architecture and query flow](#architecture-and-query-flow)
-- [Retrieval and ingestion](#retrieval-and-ingestion)
-- [Skills, MCP, and voice](#skills-mcp-and-voice)
-- [User experience](#user-experience)
-- [Technology](#technology)
-- [Quick start](#quick-start)
-- [Configuration](#configuration)
-- [Database setup](#database-setup)
-- [API reference](#api-reference)
-- [Streaming event contract](#streaming-event-contract)
-- [Security and operational behavior](#security-and-operational-behavior)
-- [Testing](#testing)
-- [Deployment](#deployment)
-- [Repository map](#repository-map)
+- [Executive Overview](#-executive-overview)
+- [System Architecture](#-system-architecture)
+- [Core Architectural Innovations](#-core-architectural-innovations)
+  - [1. Two-Tier Hierarchical Parent-Child Chunking](#1-two-tier-hierarchical-parent-child-chunking)
+  - [2. Anthropic-Style Contextual Document Headers](#2-anthropic-style-contextual-document-headers)
+  - [3. Local-First Hybrid Retrieval & Cross-Encoder Reranking](#3-local-first-hybrid-retrieval--cross-encoder-reranking)
+  - [4. Corrective RAG (CRAG) 5-Agent Cyclic State Graph](#4-corrective-rag-crag-5-agent-cyclic-state-graph)
+  - [5. Model Context Protocol (MCP) Hub Architecture](#5-model-context-protocol-mcp-hub-architecture)
+  - [6. Multi-Tenant Session Isolation & Privacy](#6-multi-tenant-session-isolation--privacy)
+  - [7. Dual-Layer Persistence Engine](#7-dual-layer-persistence-engine)
+- [Out-of-the-Box Thinking Area & Observability](#-out-of-the-box-thinking-area--observability)
+- [Multimodal Ingestion Pipeline](#-multimodal-ingestion-pipeline)
+- [Model Context Protocol (MCP) Integration Guide](#-model-context-protocol-mcp-integration-guide)
+  - [Connecting Cursor / Windsurf](#1-connecting-cursor--windsurf)
+  - [Connecting Claude Desktop](#2-connecting-claude-desktop)
+  - [Connecting External Tools into Lumina](#3-connecting-external-tools-into-lumina)
+- [Technology Stack Matrix](#-technology-stack-matrix)
+- [Step-by-Step Installation & Quick Start](#-step-by-step-installation--quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Backend Setup](#backend-setup)
+  - [Frontend Setup](#frontend-setup)
+- [Environment Variables Reference](#-environment-variables-reference)
+- [REST API & Server-Sent Events (SSE) Reference](#-rest-api--server-sent-events-sse-reference)
+- [Directory Structure](#-directory-structure)
+- [Automated Testing & Verification](#-automated-testing--verification)
+- [Production Deployment Guide](#-production-deployment-guide)
+- [License & Acknowledgments](#-license--acknowledgments)
 
-## What Lumina does
+---
 
-Lumina turns uploaded content into an explorable knowledge base and provides a chat-first interface that can:
+## 💡 Executive Overview
 
-- **Ingest files asynchronously** and track each document from `processing` to `ready` or `failed`.
-- **Parse text-rich office and data formats**: PDF, DOC/DOCX, PPT/PPTX, TXT, Markdown, HTML, CSV, TSV, and JSON. It also accepts standalone images, audio, and video through dedicated paths.
-- **Use multimodal chunks** for text, tables, image captions, audio transcripts, and video frames.
-- **Retrieve with a hierarchical CRAG loop**: select fine-grained child chunks, resolve their richer parent contexts, grade evidence, and rewrite a weak query before retrying.
-- **Stream the answer and execution trace** over Server-Sent Events (SSE), including token deltas, source metadata, retrieval metrics, agent state changes, and short reasoning notes.
-- **Offer specialist routes** for web search, image generation, external MCP tools, code analysis, data extraction, summarization, contract risk, deep reasoning, and causal reasoning.
-- **Manage conversations, session usage, documents, and MCP server registrations** from the workspace UI.
-- **Provide browser voice input and answer read-aloud** when the configured speech provider is available; the UI has a browser speech-synthesis fallback for read-aloud.
+Traditional RAG implementations suffer from fundamental bottlenecks:
+1. **The Precision vs. Context Tradeoff:** Small chunks optimize vector search precision but starve LLMs of surrounding context; large chunks preserve context but dilute vector embeddings with noise.
+2. **Passive Retrieval Hallucination:** Standard RAG naively feeds whatever context the vector database returns into the generator, even when retrieved documents are irrelevant, outdated, or incomplete.
+3. **High Infrastructure Costs:** Commercial RAG stacks depend on proprietary vector databases, heavy GPU clusters, and costly third-party embedding APIs.
+4. **Opaque Black-Box Execution:** Users receive answers with no visibility into how retrieval decisions were made, why certain passages were selected, or how queries were restructured.
 
-## Architecture and query flow
+**Lumina eliminates these barriers entirely:**
+- **Zero Recurring Cloud Cost:** Built from the ground up to operate completely on generous free-tier cloud resources and local CPU-optimized ONNX runtimes.
+- **Autonomous Self-Correction (CRAG):** Features a compiled LangGraph state machine where a **Grader Agent** actively inspects evidence relevance, triggering a **Rewriter Agent** (HyDE, Step-Back, Sub-Query Decomposition) whenever initial retrieval falls short.
+- **Hierarchical Parent-Child Resolution:** Indexes 128-token child passages for surgical vector/BM25 matching, then seamlessly resolves surviving matches to full 1024-token parent blocks for generation.
+- **Universal Model Context Protocol (MCP) Hub:** Operates as both an MCP server (allowing Cursor and Claude Desktop to query your RAG archive) and an MCP client (enabling Lumina agents to invoke external tools like GitHub, SQL databases, and Zapier).
+- **Glass-Box Observability:** Streams agent transitions, thinking logs, and generation tokens in real-time to a cognitive **Thinking Area** with Timeline, Matrix, and Audit Log views.
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+    subgraph ClientLayer ["🖥️ Client Layer (Next.js 14 / React 19)"]
+        UI["Modern Workspace UI<br/>(Light / Dark Mode)"]
+        ThinkingArea["🧠 Cognitive Thinking Area<br/>(Timeline • Matrix • Log)"]
+        ModelSelector["⚡ Dynamic Model Selector<br/>(Gemini • Nemotron • Llama)"]
+        MCPModal["🔌 MCP Hub Control Center<br/>(Server & Client Config)"]
+    end
+
+    subgraph SecurityLayer ["🛡️ Security & Boundary Middleware"]
+        SessionMiddleware["SessionIsolationMiddleware<br/>(Enforces X-Session-ID UUID v4)"]
+        SafetyGuard["SafetyGuard<br/>(Content Policy & Blocklist Filter)"]
+    end
+
+    subgraph IngestionLayer ["📥 Multimodal Ingestion Pipeline"]
+        DocParser["Adaptive Document Parser<br/>(PDF, DOCX, PPTX, CSV, TXT, MD)"]
+        TableExtractor["Docling Table & Chart Parser"]
+        AudioTranscriber["Groq Whisper Large v3 STT"]
+        ParentChild["Hierarchical Parent-Child Chunker<br/>(Parent: 1024 tok | Child: 128 tok)"]
+        ContextHeaders["Anthropic Contextual Header Generator<br/>(Gemini 2.0 Flash)"]
+        LocalEmbedder["Local FastEmbed Engine (CPU)<br/>(BGE-Large-EN 1024d + BM25)"]
+    end
+
+    subgraph CRAGCore ["🤖 Adaptive CRAG State Graph (LangGraph)"]
+        Router["🧭 Router Agent<br/>(Intent & Filter Classifier)"]
+        Retriever["🔍 Retriever Agent<br/>(Hybrid RRF Search & Parent Resolver)"]
+        Grader["⚖️ Grader Agent<br/>(Relevance Scoring 0.0 - 1.0)"]
+        Rewriter["🔄 Rewriter Agent<br/>(HyDE • Step-Back • Decompose)"]
+        Generator["✍️ Generator Agent<br/>(Grounded Synthesis & Citation Anchoring)"]
+    end
+
+    subgraph StorageLayer ["💾 Hybrid Storage & Vector Layer"]
+        Qdrant[("🔴 Qdrant Cloud / Local<br/>(Dense Vectors + BM25 Sparse Payload)")]
+        Reranker["⚡ FlashRank MiniLM Cross-Encoder<br/>(Local CPU Reranking <30ms)"]
+        Supabase[("🗄️ Supabase PostgreSQL<br/>(Document Registry & Chat History)")]
+        LocalJSON[("📁 Local Persistence Fallback<br/>(.local_documents.json & .local_mcp.json)")]
+    end
+
+    subgraph MCPHub ["🌐 Model Context Protocol (MCP)"]
+        MCPServer["Lumina MCP Server<br/>(query_knowledge_base, list_documents)"]
+        MCPClient["Lumina MCP Client<br/>(GitHub, Postgres, Zapier, Weather Tools)"]
+    end
+
+    %% Client to Ingestion & Query
+    UI -->|Upload Files| SessionMiddleware --> DocParser
+    DocParser --> TableExtractor --> ParentChild --> ContextHeaders --> LocalEmbedder --> Qdrant
+    DocParser --> Supabase
+    Supabase -.->|Offline Fallback| LocalJSON
+
+    UI -->|Submit Prompt + Attachment| SessionMiddleware --> SafetyGuard --> Router
+    Router -->|Direct Chat / Greeting| Generator
+    Router -->|Knowledge Search Required| Retriever
+
+    %% CRAG Loop
+    Retriever <-->|Hybrid Search (only_children=True)| Qdrant
+    Retriever -->|Top-20 Candidates| Reranker
+    Reranker -->|Top Filtered Children| Retriever
+    Retriever -->|Resolve Parent IDs| Qdrant
+    Retriever -->|Parent Contexts (1024 tok)| Grader
+
+    Grader -->|Context Sufficient (score >= 0.7)| Generator
+    Grader -->|Context Insufficient| Rewriter
+    Rewriter -->|Cyclic Reformulation| Retriever
+
+    Generator -->|Token Stream & Citations| UI
+    Generator -->|Live Rationale & Agent State| ThinkingArea
+
+    %% MCP Interoperability
+    ExternalAI["External AI IDEs<br/>(Cursor, Windsurf, Claude)"] <-->|HTTP/SSE & stdio| MCPServer
+    MCPServer <--> CRAGCore
+    CRAGCore <--> MCPClient <--> ExternalTools["External Services<br/>(GitHub, SQL, Zapier)"]
+```
+
+---
+
+## 🔬 Core Architectural Innovations
+
+### 1. Two-Tier Hierarchical Parent-Child Chunking
+To eliminate retrieval noise without truncating context, Lumina divides documents into a structured parent-child hierarchy:
+* **Parent Blocks (1024 tokens, 128 overlap):** Retained as rich context containers. These blocks contain full paragraphs, explanations, and complete sections.
+* **Child Chunks (128 tokens, 32 overlap):** Generated by subdividing each parent block into focused, highly specific fragments. Small chunk sizes ensure high vector cosine similarity and prevent semantic dilution.
+* **Relational Key Binding:** Each child is assigned a deterministic ID (e.g., `doc123_c_p1_0_2`) linked to its `parent_id` (`doc123_p_p1_0`).
+* **Retrieval Resolution:** The vector database searches only child chunks (`is_parent = False`). Once top child candidates survive cross-encoder reranking, Lumina fetches their respective 1024-token parent blocks to construct the prompt for the generator.
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        PARENT CHUNK (1024 Tokens)                      │
+│  "In Q3 2025, operating cash flows reached $14.2M, driven by cloud...  │
+│   ┌──────────────────────┐  ┌──────────────────────┐  ┌─────────────┐  │
+│   │ Child Chunk 1 (128t) │  │ Child Chunk 2 (128t) │  │ Child 3...  │  │
+│   │ [Search Vector]      │  │ [Search Vector]      │  │ [Vector]    │  │
+│   └──────────────────────┘  └──────────────────────┘  └─────────────┘  │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 2. Anthropic-Style Contextual Document Headers
+Dense vector embeddings often fail on ambiguous chunks (e.g., a paragraph starting with *"The total revenue increased by 14%"* lacks the document subject, year, and department).
+
+Lumina implements the **Anthropic Contextual Retrieval pattern**:
+1. During ingestion, each chunk is passed to Gemini Flash with document context.
+2. The LLM generates a concise, 1-sentence document position summary (e.g., *"This passage discusses Q3 2025 operating expenditures in the Lumina Enterprise Annual Report"*).
+3. The summary is prepended to the text representation before embedding generation.
+4. The raw, unaltered text is preserved in `original_text` so user citations display genuine source passages.
+
+---
+
+### 3. Local-First Hybrid Retrieval & Cross-Encoder Reranking
+Lumina utilizes a hybrid search strategy that fuses dense semantic embeddings with sparse keyword matching, followed by local cross-encoder reranking:
 
 ```mermaid
 flowchart LR
-  Browser[Next.js workspace] -->|JSON + X-Session-ID| API[FastAPI API]
-  Browser <-->|SSE answer, trace, sources| API
-  API --> Guard[Session, rate-limit, safety]
-  Guard --> Router[Router agent]
-  Router -->|specialist route| Skills[Skill registry]
-  Router -->|knowledge / multimodal route| Retrieve[Retriever]
-  Retrieve --> Qdrant[(Qdrant)]
-  Retrieve --> Grade[Grader]
-  Grade -->|sufficient| Generate[Streaming generator]
-  Grade -->|weak evidence| Rewrite[Rewriter]
-  Rewrite --> Retrieve
-  Skills --> Generate
-  Generate --> API
-  API <--> Meta[(Supabase, optional)]
+    Query["User Query"] --> Embed["FastEmbed BGE-Large<br/>(1024d Dense Vector)"]
+    Query --> BM25["FastEmbed Qdrant BM25<br/>(Sparse Token Vector)"]
+    
+    Embed --> QdrantDense["Qdrant Cosine Similarity"]
+    BM25 --> QdrantBM25["Qdrant BM25 Matching"]
+    
+    QdrantDense --> RRF["Reciprocal Rank Fusion (RRF)<br/>k = 60"]
+    QdrantBM25 --> RRF
+    
+    RRF --> Top20["Top 20 Child Candidates"]
+    Top20 --> FlashRank["FlashRank MiniLM (Local CPU)<br/>Cross-Encoder Attention"]
+    FlashRank --> TopParents["Top Ranked Parent Contexts"]
 ```
 
-### Agent graph
+#### Reciprocal Rank Fusion (RRF) Formulation:
+$$RRF(d) = \sum_{m \in \{dense, bm25\}} \frac{w_m}{k + r_m(d)}$$
+*where $k = 60$, $w_{dense} = 0.5$, $w_{bm25} = 0.5$, and $r_m(d)$ is the candidate rank in modality $m$.*
 
-The compiled LangGraph state machine begins at the router. Direct conversational requests go straight to generation. Specialist routes call the skill executor; image generation ends after returning its image result, while other skills feed their result into generation. Retrieval routes follow `retriever → grader → generator`; an insufficient grade routes to `rewriter → retriever` until the configured retry limit is reached.
+* **FlashRank MiniLM Reranker:** Runs locally on CPU with an ultra-lightweight ONNX runtime (~30 MB RAM). It evaluates full cross-attention between query and candidate passages, delivering reranking in sub-30ms without cloud latency.
 
-| Node | Responsibility |
-| --- | --- |
-| **Router** | Applies intent heuristics first, then an LLM classifier when needed. It can contextualize follow-up questions from chat history and extracts simple department filters. |
-| **Skill executor** | Dispatches the selected registered skill. |
-| **Retriever** | Embeds the query, runs hybrid search, optionally reranks candidates, and resolves parent chunks for generation context. |
-| **Grader** | Scores retrieved evidence in batches and decides whether it clears the configured relevance threshold. |
-| **Rewriter** | Rotates through HyDE, step-back prompting, and sub-query decomposition across retrieval retries. |
-| **Generator** | Builds a grounded prompt from retrieved context, attachments, history, and specialist results, then returns a streaming provider response. |
+---
 
-## Retrieval and ingestion
+### 4. Corrective RAG (CRAG) 5-Agent Cyclic State Graph
+Rather than proceeding linearly from search to synthesis, Lumina executes a compiled **LangGraph** autonomous state machine:
 
-### Document pipeline
+| Agent | Core Responsibility | Decision / Transition Logic |
+| :--- | :--- | :--- |
+| 🧭 **Router Agent** | Analyzes query intent, classifies complexity, and extracts metadata filters. | Routes to `Retriever` for knowledge queries or fast-paths directly to `Generator` for conversational greetings. |
+| 🔍 **Retriever Agent** | Executes hybrid child search in Qdrant, applies FlashRank reranking, and resolves parent context blocks. | Passes retrieved parent contexts to the `Grader Agent`. |
+| ⚖️ **Grader Agent** | Evaluates relevance score ($0.0 \le \text{score} \le 1.0$) and verifies sufficiency against hallucination thresholds. | If $\text{score} \ge 0.70$, routes to `Generator`; otherwise, triggers `Rewriter`. |
+| 🔄 **Rewriter Agent** | Reformulates weak or ambiguous queries using rotating strategies across retries. | **Retry 1:** HyDE (Hypothetical Document Embeddings)<br/>**Retry 2:** Step-Back Prompting (high-level abstraction)<br/>**Retry 3:** Sub-Query Decomposition. Loops back to `Retriever`. |
+| ✍️ **Generator Agent** | Synthesizes grounded answers with strict markdown citation anchors and source badges. | Streams tokens to the client and binds citation metadata. |
 
-1. `POST /api/ingest` writes the upload to a sanitized, uniquely prefixed temporary file. Files larger than **50 MiB** are rejected.
-2. A FastAPI background task parses and analyzes the file, so the upload response returns promptly with a document ID and `processing` status.
-3. The deterministic document analyzer selects a chunking strategy from section-aware, semantic, tabular, content-aware, narrative, or fixed-size strategies.
-4. The parent/child chunker produces searchable children linked to fuller parent contexts. Table chunks remain coherent rather than being treated as ordinary prose.
-5. Lumina optionally produces contextual headers with the configured LLM. The header is prepended for indexing while `original_text` remains available for display.
-6. `FastEmbed` generates local dense vectors. Qdrant stores embeddings and chunk payloads; sparse/BM25 representations are used when available.
-7. Metadata is stored in Supabase when configured, and the document status is updated to `ready` or `failed`.
+---
 
-### Supported upload types
+### 5. Model Context Protocol (MCP) Hub Architecture
+Lumina provides full bidirectional support for the **Model Context Protocol (MCP)**:
 
-| Category | Extensions / behavior |
-| --- | --- |
-| Documents | `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, `.txt`, `.md`, `.html`, `.csv`, `.tsv`, `.json` |
-| Images | `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.gif`; Lumina creates an image-caption chunk. PDFs also have embedded images extracted and captioned. |
-| Audio | `.mp3`, `.wav`, `.m4a`; transcription uses the configured Groq or NVIDIA-compatible service. |
-| Video | `.mp4`, `.avi`, `.mov`; the pipeline extracts/captions keyframes and processes audio where dependencies/providers support it. |
+```mermaid
+flowchart TD
+    subgraph ServerMode ["1. Server Mode: Lumina as MCP Provider"]
+        LuminaRAG["Lumina RAG Knowledge Engine"]
+        MCPEndpoint["HTTP/SSE Endpoint (/mcp)<br/>or stdio subprocess"]
+        Cursor["Cursor IDE"] <-->|mcp.json| MCPEndpoint
+        Windsurf["Windsurf IDE"] <-->|mcp.json| MCPEndpoint
+        Claude["Claude Desktop"] <-->|claude_desktop_config.json| MCPEndpoint
+        MCPEndpoint <--> LuminaRAG
+    end
 
-### Hybrid retrieval details
+    subgraph ClientMode ["2. Client Mode: Lumina as MCP Consumer"]
+        LuminaAgents["Lumina CRAG Agents"]
+        MCPRegistry["MCP Client Manager"]
+        GitHub["GitHub Developer MCP"]
+        SQL["Postgres / SQLite MCP"]
+        Zapier["Zapier Actions MCP"]
+        Weather["Weather / News Tools"]
+        
+        LuminaAgents <--> MCPRegistry
+        MCPRegistry <--> GitHub
+        MCPRegistry <--> SQL
+        MCPRegistry <--> Zapier
+        MCPRegistry <--> Weather
+    end
+```
 
-- Dense query vectors use the configured local FastEmbed model (the application default is `BAAI/bge-small-en-v1.5`, 384 dimensions).
-- Qdrant stores both parent and child chunks. Retrieval targets child chunks and resolves unique parent IDs to preserve context for the generator.
-- Dense and sparse rankings are fused with reciprocal-rank fusion when sparse embedding support is available.
-- `TOP_K_RETRIEVE` controls candidate retrieval; `TOP_K_RERANK` controls retained candidates.
-- FlashRank reranking is **opt-in** (`ENABLE_FLASHRANK=true`). If it is disabled or unavailable, the CPU reranker has a lexical fallback.
-- Retrieval applies payload filters for department and session data where supplied.
+---
 
-## Skills, MCP, and voice
+### 6. Multi-Tenant Session Isolation & Privacy
+Lumina guarantees multi-tenant data privacy at every architectural tier:
+* **UUID v4 Session Token:** Generated in the browser (`localStorage`) and validated via `SessionIsolationMiddleware`.
+* **Qdrant Vector Payload Scoping:** Every stored vector contains an indexed `session_id` payload field.
+* **Shared Workspace vs. Private Session:**
+  * **Document Library:** Files uploaded to the library are indexed into the shared workspace knowledge base for all authorized team sessions to query.
+  * **Chat History & Prompts:** All messages, conversation turns, reasoning logs, and temporary attachments are strictly scoped to the user's `session_id` and are never exposed to other users.
 
-### Built-in skills
+---
 
-The graph registers these skills at startup: web search, image generation, MCP tool execution, deep reasoning, code analysis, summarization, data extraction, contract-risk analysis, and deep causal reasoning. The router recognizes common intent phrases and routes them to the appropriate skill; the Skills API also exposes manifests and supports direct execution.
+### 7. Dual-Layer Persistence Engine
+Lumina operates with a dual persistence architecture:
+* **Cloud Persistence (Supabase):** When configured, documents, chunk indexes, conversation trees, and MCP server registrations persist in managed PostgreSQL with Row-Level Security (RLS).
+* **Zero-Dependency Local Persistence:** If Supabase credentials are not provided or the network is offline, Lumina automatically falls back to local JSON registries (`.local_documents.json` and `.local_mcp.json`), providing offline functionality with zero setup friction.
 
-**Web search** uses Tavily when `TAVILY_API_KEY` is set. **Image generation** uses the active NVIDIA-compatible image endpoint. Feature availability consequently depends on provider credentials and the selected provider/model.
+---
 
-### MCP hub
+## 🧠 Out-of-the-Box Thinking Area & Observability
 
-Lumina works in both directions:
+During query processing, Lumina streams internal agent decision-making in real-time through an interactive **Thinking Area**:
 
-1. **MCP server:** when the `mcp` package is installed, FastAPI mounts the Lumina MCP SSE application at `/mcp`. It exposes `list_documents` and `query_knowledge_base`, so a compatible client can inspect the indexed knowledge base.
-2. **MCP client:** the REST MCP routes validate, test, register, list, discover, and remove remote MCP connections. Registered tools can be invoked by the MCP tool skill.
+<div align="center">
 
-For a local MCP client configuration, point it at `http://localhost:8000/mcp`:
+| View Mode | Visualization Description |
+| :--- | :--- |
+| **Timeline View** | Chronological progression displaying each agent node, execution duration, reasoning decisions, and metric chips (e.g., `Strategy: HyDE`, `Score: 0.92`, `Latency: 28ms`). |
+| **Agents Matrix** | A multi-column matrix grouping decisions by agent (`Router`, `Retriever`, `Grader`, `Rewriter`, `Generator`) for inspection of pipeline logic. |
+| **Raw Log View** | Monospace execution log with syntax-highlighted events and one-click clipboard copying for debugging. |
+
+</div>
+
+* **Live Pulsating Neural Brain:** Features an animated visual indicator during active streaming that transitions to a green status badge upon completion.
+
+---
+
+## 📥 Multimodal Ingestion Pipeline
+
+Lumina processes diverse file formats into structured chunks:
+
+```
+Document Upload ──▶ [Adaptive Parser] ──▶ [Hierarchy Builder] ──▶ [Context Synthesis] ──▶ [Vectorization]
+```
+
+| Format | Parsing Engine | Ingestion & Extraction Capabilities |
+| :--- | :--- | :--- |
+| **PDF (`.pdf`)** | Docling / PyMuPDF | Extracts structured text, detects table boundaries, outputs clean Markdown tables, and extracts embedded figures for Vision QA. |
+| **Word (`.docx`)** | python-docx | Preserves heading levels (H1–H4), bullet hierarchies, bold/italic markup, and embedded document tables. |
+| **PowerPoint (`.pptx`)**| python-pptx | Extracts slide titles, body bullet points, speaker notes, and tabular layouts. |
+| **Spreadsheets (`.csv`, `.xlsx`)**| Pandas / OpenPyXL | Parses rows, headers, and statistical tables into Markdown format. |
+| **Text & Code (`.txt`, `.md`, `.py`, `.json`)** | Native UTF-8 Reader | Preserves formatting, code blocks, indentation, and structure. |
+| **Audio (`.mp3`, `.wav`, `.m4a`)** | Groq Whisper Large v3 | Transcribes speech to text with timestamps and chunk segmentation. |
+| **Images (`.png`, `.jpg`, `.webp`)** | Gemini 2.0 Flash Vision | Extracts visual charts, diagrams, infographics, and handwritten annotations. |
+
+---
+
+## 🔌 Model Context Protocol (MCP) Integration Guide
+
+### 1. Connecting Cursor / Windsurf
+Enable Cursor or Windsurf to search your Lumina RAG knowledge base.
+
+Create or edit `.cursor/mcp.json` in your project root:
 
 ```json
 {
   "mcpServers": {
-    "lumina": {
+    "lumina-rag": {
       "url": "http://localhost:8000/mcp"
     }
   }
 }
 ```
-
-Remote MCP URL validation permits `http`/`https`, blocks known cloud-metadata hosts, and rejects private/internal IP addresses except localhost by default. Treat externally registered MCP servers as trusted integrations: their tools are capable of performing actions outside Lumina.
-
-### Voice
-
-- `POST /api/voice/transcribe` accepts an audio upload and returns `{ "text": "…" }`.
-- `POST /api/voice/synthesize` accepts text and returns WAV bytes.
-- NVIDIA-compatible ASR/TTS is preferred when `NVIDIA_API_KEY` is present; transcription can use Groq as an alternative. If a service is unconfigured or cannot synthesize, the API returns empty audio rather than pretending speech was generated.
-
-## User experience
-
-The Next.js application is a single research workspace with:
-
-- a drag-and-drop document library, upload progress, status polling, and document deletion;
-- conversation creation and selection, persisted when Supabase is configured;
-- an attachment-aware chat composer with model selection, Web Search mode (`Auto`, `Always`, `Off`), image/document attachments, and browser microphone capture;
-- Markdown answers, citation/source cards, generated-image cards, web-result cards, and external-tool result cards;
-- a collapsible Thinking Area that presents streamed agent notes in timeline, agent matrix, and raw-log views; and
-- an MCP control center that shows Lumina's exposed tools and manages external connections.
-
-The browser creates and retains a UUID in `localStorage` under `lumina_session_uuid`, sends it as `X-Session-ID`, and uses it for API calls and conversation/usage queries.
-
-## Technology
-
-| Area | Implementation |
-| --- | --- |
-| Web client | Next.js 14, React 18, TypeScript, Tailwind CSS, Lucide icons |
-| API | FastAPI, Uvicorn, Pydantic settings, SSE |
-| Agent orchestration | LangGraph |
-| LLM providers | NVIDIA NIM/OpenAI-compatible endpoint, Google Gemini, or Groq through a provider registry |
-| Embeddings | FastEmbed local CPU model |
-| Vector search | Qdrant dense vectors plus optional sparse vectors / RRF |
-| Reranking | FlashRank MiniLM with a lexical fallback |
-| Persistence | Supabase PostgreSQL when configured; local JSON/in-memory fallbacks for selected services |
-| Parsing | PyMuPDF, pdfplumber, python-docx, python-pptx, Python standard parsing |
-| Optional integrations | Groq transcription, Tavily web search, MCP, LangSmith tracing |
-
-## Quick start
-
-### Prerequisites
-
-- Python 3.11+ (the Render blueprint uses Python 3.12).
-- Node.js 20+ and npm.
-- A running Qdrant instance. Docker is the most direct local option.
-- At least one LLM provider key: NVIDIA, Gemini, or Groq. NVIDIA is the application default; Gemini is a good alternative for text generation.
-
-Start Qdrant locally:
-
-```bash
-docker run --rm -p 6333:6333 -p 6334:6334 \
-  -v qdrant_data:/qdrant/storage \
-  qdrant/qdrant:latest
-```
-
-### 1. Configure and start the backend
-
-```bash
-cd backend
-cp env.example .env
-```
-
-Edit `.env` to set `QDRANT_URL` and an LLM key/provider. Then create an isolated environment, install packages, and launch the API:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Verify it in a second terminal:
-
-```bash
-curl http://localhost:8000/health
-```
-
-Expected response includes `"status":"ok"` and `"service":"lumina-backend"`.
-
-### 2. Start the frontend
-
-```bash
-cd frontend
-npm ci
-printf 'NEXT_PUBLIC_API_URL=http://localhost:8000\n' > .env.local
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000). Upload a document in the sidebar, wait for it to become ready, then ask a question about its contents.
-
-### 3. Try the API directly
-
-All non-exempt API routes accept an optional UUID v4 session header. Supplying one makes repeated calls deterministic from the server's perspective.
-
-```bash
-SESSION_ID="$(python -c 'import uuid; print(uuid.uuid4())')"
-curl -N http://localhost:8000/api/chat \
-  -X POST \
-  -H 'Content-Type: application/json' \
-  -H "X-Session-ID: $SESSION_ID" \
-  -d '{"query":"Summarize the documents in this workspace.","web_search_mode":"off"}'
-```
-
-`-N` is important: it prevents curl from buffering the SSE stream.
-
-## Configuration
-
-Copy `backend/env.example` to `backend/.env`. Never commit actual provider keys. These are the most useful settings; application defaults live in `backend/app/config.py`.
-
-| Variable | Purpose | Default / notes |
-| --- | --- | --- |
-| `PRIMARY_PROVIDER` | Provider selected by the registry | `nvidia`; supported registry families are NVIDIA, Gemini, and Groq |
-| `NVIDIA_API_KEY`, `NVIDIA_BASE_URL` | NVIDIA/OpenAI-compatible inference credentials and base URL | Needed for NVIDIA generation, image, ASR, or TTS paths |
-| `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TEXT_MODEL` | Gemini credentials and model names | Gemini provider is selected when configured/requested |
-| `GROQ_API_KEY` | Groq credentials | Used by Groq provider and can support transcription |
-| `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION` | Vector database connection | Local default URL is `http://localhost:6333` |
-| `EMBEDDING_MODEL`, `EMBEDDING_DIM` | FastEmbed model and expected vector size | App defaults: BGE small, 384; both values must match your Qdrant collection |
-| `RERANK_MODEL`, `ENABLE_FLASHRANK` | Local reranker model and enable flag | FlashRank is disabled by default |
-| `TOP_K_RETRIEVE`, `TOP_K_RERANK` | Candidate and final-result counts | `20` and `5` |
-| `MAX_RETRIEVAL_RETRIES`, `RELEVANCE_THRESHOLD` | CRAG retry count and grading gate | `2` and `0.5` |
-| `TAVILY_API_KEY` | Live web-search integration | Required for successful web search |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | Metadata, conversations, messages, and usage persistence | Optional; services use local/degraded behavior when absent |
-| `CORS_ORIGINS` | Comma-separated allowed frontend origins | `*` in app defaults; tighten this in production |
-| `SESSION_HEADER`, `SESSION_AUTO_ISSUE` | Session boundary settings | Middleware currently reads/writes `X-Session-ID` |
-| `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`, `LANGSMITH_TRACING` | LangSmith observability | Optional |
-
-> [!NOTE]
-> `backend/env.example` contains older large-embedding/Gemini examples, while the runtime defaults in `backend/app/config.py` and the Render blueprint use BGE small at 384 dimensions. Choose one embedding model/dimension pair deliberately before creating the Qdrant collection; changing dimensions requires recreating the collection.
-
-## Database setup
-
-Supabase is optional for basic local experimentation, but it is required for durable document registry, messages, conversations, MCP connections, and usage records.
-
-1. Create a Supabase project.
-2. In the SQL editor, apply `backend/supabase_schema.sql` first.
-3. Apply the migrations in order:
-   - `backend/supabase_migrations/001_users_conversations.sql`
-   - `backend/supabase_migrations/002_session_rls.sql`
-   - `backend/supabase_migrations/003_usage_tracking.sql`
-4. Set `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` in `backend/.env`, then restart the API.
-
-The schema includes documents, chunks, sessions, messages, users, conversations, MCP connections, and usage logging. The provided RLS migration explicitly documents that the backend service role bypasses RLS; production deployments should not expose that key to clients.
-
-## API reference
-
-Interactive OpenAPI documentation is available at `http://localhost:8000/docs` while the backend runs.
-
-### Core API
-
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/`, `/health` | Service health response. |
-| `POST` | `/api/chat` | Starts an SSE chat response. Body supports `query`, optional `history`, `image_b64`, `session_id`, `web_search_mode`, `model`, and attachment fields. |
-| `POST` | `/api/ingest` | Multipart upload with `file` and optional `dept`; returns a document ID and status. |
-| `GET` | `/api/ingest/{doc_id}/status` | Returns background ingestion status. |
-| `GET` | `/api/documents` | Lists registered documents. |
-| `DELETE` | `/api/documents/{doc_id}` | Deletes document vectors and metadata. |
-| `POST` | `/api/sessions` | Creates a session record. |
-| `GET` | `/api/sessions/{session_id}/history` | Returns messages for a session. |
-| `POST` | `/api/sessions/{session_id}/cleanup` | Deletes the session's Qdrant data and cleanup-capable metadata. |
-| `DELETE` | `/api/sessions/{session_id}` | Deletes a session. |
-| `GET` | `/api/sessions` | Lists sessions. |
-| `GET` | `/api/sessions/{session_id}/usage` | Returns aggregated usage and latency metrics. |
-
-### Feature APIs
-
-| Method | Path | Description |
-| --- | --- | --- |
-| `POST` | `/api/voice/transcribe` | Multipart `audio`, optional `format`; returns transcript text. |
-| `POST` | `/api/voice/synthesize` | JSON `{ "text", "voice" }`; returns `audio/wav`. |
-| `GET/POST` | `/api/conversations` | List or create session-scoped conversations. |
-| `GET/PATCH` | `/api/conversations/{conversation_id}` | Read or update a conversation. |
-| `POST` | `/api/mcp/test` | Tests a candidate remote MCP endpoint. |
-| `GET/POST` | `/api/mcp/connections` | List or register MCP connections. |
-| `GET` | `/api/mcp/connections/{connection_id}/tools` | Discovers a connection's tools. |
-| `DELETE` | `/api/mcp/connections/{connection_id}` | Removes a connection. |
-| `GET` | `/api/skills`, `/api/skills/categories`, `/api/skills/{skill_name}` | Lists skills/categories or reads a manifest. |
-| `POST` | `/api/skills/{skill_name}/execute` | Executes a skill directly with its payload. |
-| `GET` | `/mcp` | Lumina MCP SSE application when MCP is installed. |
-
-## Streaming event contract
-
-`POST /api/chat` responds with `text/event-stream`. Each message is a `data: <JSON>\n\n` frame and the stream ends with `data: [DONE]`.
-
-| Event `type` | Important fields | Meaning |
-| --- | --- | --- |
-| `agent_status` | `agent`, `status`, `message`, `step` | An agent became active, complete, or was skipped. |
-| `thinking` | `agent`, `step`, `content` | Concise server-supplied trace note for the Thinking Area. |
-| `retrieval_info` | child/reranked counts, latency, sufficiency, filters | Retrieval summary emitted before text. |
-| `text` | `content` | A streamed answer token/chunk. |
-| `image_result` | `image_b64`, `prompt`, `refined_prompt` | Image skill result. |
-| `web_results` | `results` | Search-result records from the web skill. |
-| `tool_result` | `result` | External MCP tool result. |
-| `usage_info` | prompt/completion/total token estimates, latency, model, route | Per-request metering summary. |
-| `sources` | source chunks, modality, page, score | Citation/source data after generation. |
-| `error` | `content` | An error emitted during streaming. |
-
-Token counts are estimates derived from word counts, not provider-billed token totals.
-
-## Security and operational behavior
-
-- **Session middleware:** all application endpoints other than health/docs/MCP are assigned a UUID v4 session if the header is absent. Malformed supplied UUIDs receive `401`; valid values are echoed in the response header.
-- **Rate limiting:** an in-memory sliding window limits each session (or, when no session is available, IP) to 60 requests/minute and 600 requests/hour. It returns `429` and `Retry-After` when exceeded. This is process-local, so use a shared limiter for horizontally scaled production deployments.
-- **Safety:** chat requests pass through a blocklist/LLM-backed safety guard before graph execution. A rejected request is returned as an SSE error event.
-- **Upload handling:** filenames are sanitized, temporary names are randomized, and API upload size is capped at 50 MiB.
-- **CORS:** the default is permissive for development. Set a specific comma-separated `CORS_ORIGINS` list before public deployment.
-- **Observability:** LangSmith-related settings are supported. Never put provider/service-role keys in the frontend or in client-visible `NEXT_PUBLIC_*` variables.
-
-## Testing
-
-Run backend tests from `backend/` and frontend contract tests from `frontend/`:
-
-```bash
-cd backend
-pytest -q
-
-# Optional end-to-end dependency smoke check; needs an LLM key and downloads/uses local models.
-python verify_smoke.py
-
-cd ../frontend
-npm ci
-npm test
-npm run build
-```
-
-The backend test suite covers routing, graph behavior, chunking, retrieval, Qdrant payload handling, safety, sessions, MCP validation, providers, voice behavior, and API contracts. The frontend test validates its SSE event dispatch contract.
-
-## Deployment
-
-`render.yaml` defines two Render web services:
-
-- **`lumina-backend`** installs `backend/requirements.txt`, starts Uvicorn, and exposes `/health` for health checks.
-- **`lumina-frontend`** installs and builds the Next.js application, then starts it with `next start`.
-
-For a production deployment:
-
-1. Provision Qdrant and configure its URL/key.
-2. Configure at least one model provider and any optional integrations needed by your use case.
-3. Apply the Supabase schema/migrations if persistence is required.
-4. Set `CORS_ORIGINS` to the deployed frontend origin, not `*`.
-5. Set `NEXT_PUBLIC_API_URL` to the public backend origin, including `https://` if required by the platform.
-6. Ensure the backend has enough disk/cache capacity for FastEmbed and optional FlashRank model downloads, and enough memory for document processing.
-
-## Repository map
-
-```text
-.
-├── frontend/                         # Next.js workspace UI
-│   ├── app/                          # Page, layout, global styles
-│   ├── components/                   # Chat, sources, thinking area, MCP UI
-│   ├── lib/api.ts                    # Typed REST/SSE client
-│   └── __tests__/                    # Frontend streaming contract test
-├── backend/
-│   ├── app/
-│   │   ├── agents/                   # Router, retriever, grader, rewriter, generator
-│   │   ├── graph/                    # LangGraph CRAG state graph
-│   │   ├── ingestion/                # Parsers, chunking, captions, embeddings
-│   │   ├── retrieval/                # Qdrant and CPU reranking
-│   │   ├── routers/                  # Voice, MCP, conversations, skills APIs
-│   │   ├── services/                 # Providers, persistence, safety, MCP, usage
-│   │   ├── middleware/               # Session and rate limiting
-│   │   ├── main.py                   # FastAPI composition and core endpoints
-│   │   └── mcp_server.py             # Lumina MCP tools
-│   ├── tests/                        # Unit, contract, and integration-oriented tests
-│   ├── env.example                   # Environment template
-│   └── supabase_schema.sql           # Base Supabase schema
-├── render.yaml                       # Render deployment blueprint
-└── assets/                           # Project image assets
-```
-
-## Troubleshooting
-
-| Symptom | Checks |
-| --- | --- |
-| API starts but chat fails | Confirm one provider key is set, `PRIMARY_PROVIDER` points to it, and the selected model is available to that provider. |
-| Ingestion stays `processing` or becomes `failed` | Read backend logs: ingestion runs in a background task. Verify Qdrant is reachable, the embedding dimension matches the collection, and the file type is supported. |
-| Vector errors after changing models | Recreate the Qdrant collection or revert `EMBEDDING_MODEL`/`EMBEDDING_DIM` to the values used to create it. |
-| Web search returns no results | Set `TAVILY_API_KEY`; use `Web: Always` only when you intend to call the web skill. |
-| Voice input produces no text | Configure NVIDIA or Groq transcription, verify browser microphone permission, and inspect the voice endpoint response. |
-| MCP connection is rejected | Use an HTTP(S) endpoint; private-network and cloud metadata URLs are intentionally blocked. |
-| Browser cannot reach the backend | Set `NEXT_PUBLIC_API_URL` correctly and add the frontend origin to `CORS_ORIGINS`. |
+*(When deployed to production, replace `http://localhost:8000/mcp` with your live HTTPS domain: `https://api.yourdomain.com/mcp`)*.
 
 ---
 
-Built for transparent, inspectable knowledge workflows: upload, retrieve, verify, and cite.
+### 2. Connecting Claude Desktop
+Enable Claude Desktop to run search queries against Lumina via local stdio.
+
+Add to `claude_desktop_config.json`:
+* **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+* **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "lumina-rag": {
+      "command": "python",
+      "args": ["-m", "app.mcp_server"],
+      "cwd": "f:/AI/Lumina/backend"
+    }
+  }
+}
+```
+
+#### Exposed Native MCP Tools:
+1. `query_knowledge_base`: Executes hybrid dense + BM25 search with FlashRank reranking across all indexed passages.
+   * *Arguments:* `query` (string, required), `top_k` (integer, optional, default: 5).
+2. `list_documents`: Returns metadata, titles, file types, and chunk counts for all holdings in the library.
+
+---
+
+### 3. Connecting External Tools into Lumina
+Connect external MCP servers directly into Lumina:
+1. Open the Lumina web application at `http://localhost:3000`.
+2. Click **Collections & MCP** in the left sidebar (or open the **MCP Hub**).
+3. Switch to **Connect External Tools to Lumina**.
+4. Enter the server name and endpoint URL (e.g., `https://mcp.github.com/sse` or `http://localhost:8080/sse`).
+5. Click **Register Server & Discover Tools**.
+6. Lumina auto-discovers all exposed tools, rendering their names, descriptions, and parameter schemas in the **Discovered Tools Catalog**.
+
+---
+
+## 💻 Technology Stack Matrix
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                               FRONTEND                                 │
+│  Next.js 14 (App Router) • React 19 • TypeScript 5.0 • Tailwind CSS    │
+│  Lucide Icons • EventSource SSE Client • Framer Motion Micro-Effects   │
+├────────────────────────────────────────────────────────────────────────┤
+│                                BACKEND                                 │
+│  FastAPI 0.115+ • Uvicorn • Pydantic v2 • Python 3.12 Asynchronous     │
+│  LangGraph 0.2+ • LangChain Core • Starlette Security Middleware       │
+├────────────────────────────────────────────────────────────────────────┤
+│                           RETRIEVAL & ML                               │
+│  FastEmbed (BGE-Large-EN-v1.5 & BM25) • FlashRank MiniLM Cross-Encoder │
+│  Qdrant Vector Engine (HNSW Indexing) • Groq Whisper Large v3 (STT)   │
+├────────────────────────────────────────────────────────────────────────┤
+│                          PERSISTENCE & DATA                            │
+│  Supabase PostgreSQL (Row-Level Security) • Local JSON Registry Stores │
+│  PyMuPDF (fitz) • python-docx • python-pptx • Pillow • Docling         │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Step-by-Step Installation & Quick Start
+
+### Prerequisites
+* **Python 3.11** or **Python 3.12** installed on your system.
+* **Node.js 18.17+** or **Node.js 20+** and **npm**.
+* *(Optional)* Free [Qdrant Cloud](https://cloud.qdrant.io) cluster or local Docker.
+* *(Optional)* Free [Google AI Studio API Key](https://aistudio.google.com/apikey).
+
+---
+
+### Backend Setup
+
+```bash
+# 1. Clone repository and navigate to backend
+git clone https://github.com/Vignesh-Manivasakam/Lumina.git
+cd Lumina/backend
+
+# 2. Create and activate Python virtual environment
+# Windows (PowerShell):
+python -m venv .venv
+.\.venv\Scripts\activate
+
+# macOS / Linux:
+# python3 -m venv .venv
+# source .venv/bin/activate
+
+# 3. Install required Python packages
+pip install -r requirements.txt
+
+# 4. Create your environment configuration file
+cp env.example .env
+```
+
+#### Configure `.env`:
+```env
+# Required for Generation & Vision
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Vector Database (Local or Qdrant Cloud)
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=
+QDRANT_COLLECTION=lumina_multimodal
+
+# Optional: Supabase Cloud Database (Leave empty for Local Persistence Mode)
+SUPABASE_URL=
+SUPABASE_SERVICE_KEY=
+
+# Optional: Groq / NVIDIA / Fallbacks
+GROQ_API_KEY=
+NVIDIA_API_KEY=
+```
+
+#### Run Verification Smoke Test:
+```bash
+python verify_smoke.py
+```
+
+#### Start FastAPI Backend Server:
+```bash
+python -m uvicorn app.main:app --reload --port 8000
+```
+*Backend is live at `http://localhost:8000` (Interactive API Docs: `http://localhost:8000/docs`).*
+
+---
+
+### Frontend Setup
+
+```bash
+# 1. Open a new terminal and navigate to frontend directory
+cd Lumina/frontend
+
+# 2. Install Node dependencies
+npm install
+
+# 3. Start Next.js development server
+npm run dev
+```
+*Frontend is accessible at **`http://localhost:3000`**.*
+
+---
+
+## 🔑 Environment Variables Reference
+
+| Variable | Type | Required? | Default Value | Description |
+| :--- | :---: | :---: | :--- | :--- |
+| `GEMINI_API_KEY` | String | **Yes** | — | Google AI Studio API Key for Gemini 2.0 Flash reasoning and vision. |
+| `QDRANT_URL` | String | **Yes** | `http://localhost:6333` | URL of Qdrant Cloud cluster or local Docker container. |
+| `QDRANT_API_KEY` | String | Optional | — | API key for managed Qdrant Cloud instances. |
+| `QDRANT_COLLECTION` | String | Optional | `lumina_multimodal` | Name of the vector collection in Qdrant. |
+| `SUPABASE_URL` | String | Optional | — | Supabase project URL for PostgreSQL metadata persistence. |
+| `SUPABASE_SERVICE_KEY` | String | Optional | — | Supabase Service Role Key for server-side database access. |
+| `GROQ_API_KEY` | String | Optional | — | Groq API Key for Whisper Large v3 audio transcription and Llama 3.3. |
+| `NVIDIA_API_KEY` | String | Optional | — | NVIDIA NIM API Key for Nemotron model fallback. |
+| `EMBEDDING_DIM` | Integer | Optional | `1024` | Dimensionality of BGE-Large dense embeddings. |
+| `MAX_RETRIEVAL_RETRIES`| Integer | Optional | `3` | Maximum number of CRAG cyclic rewriting loops before fallback. |
+
+---
+
+## 📡 REST API & Server-Sent Events (SSE) Reference
+
+### Endpoints Overview
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/chat` | Main streaming chat endpoint. Streams tokens and agent trace events via SSE. |
+| `POST` | `/api/ingest` | Multipart upload for documents (PDF, DOCX, PPTX, CSV, TXT, images). |
+| `GET` | `/api/ingest/{doc_id}/status` | Polls asynchronous document chunking and indexing status. |
+| `GET` | `/api/documents` | Lists all documents indexed in the library. |
+| `DELETE` | `/api/documents/{doc_id}` | Deletes a document and purges its vector embeddings from Qdrant. |
+| `POST` | `/api/mcp/connections` | Registers an external MCP server connection and discovers its tools. |
+| `GET` | `/api/mcp/connections` | Lists registered external MCP server connections and tools. |
+| `DELETE` | `/api/mcp/connections/{id}`| Removes an external MCP connection. |
+| `GET` | `/api/sessions/{id}/history` | Retrieves stored conversation history for a specific session UUID. |
+| `POST` | `/api/sessions/{id}/cleanup` | Clears conversation messages for a session. |
+| `GET` | `/health` | Liveness and health check endpoint. |
+
+---
+
+### Server-Sent Events (SSE) Event Dictionary
+
+When streaming responses from `POST /api/chat`, Lumina emits structured JSON events:
+
+```
+event: message
+data: {"type": "agent_status", "agent": "retriever", "status": "active", "label": "Searching knowledge base"}
+
+event: message
+data: {"type": "thinking", "agent": "grader", "thought": "Retrieved 4 chunks; relevance score 0.88 exceeds threshold."}
+
+event: message
+data: {"type": "retrieval_info", "info": {"retrieved_count": 12, "reranked_count": 4, "retrieval_ms": 42}}
+
+event: message
+data: {"type": "text", "content": "According to the 2025 Financial Summary..."}
+
+event: message
+data: {"type": "sources", "sources": [{"doc_title": "Annual_Report.pdf", "page": 4, "score": 0.94}]}
+
+event: message
+data: [DONE]
+```
+
+---
+
+## 📂 Directory Structure
+
+```
+Lumina/
+├── backend/
+│   ├── app/
+│   │   ├── agents/               # 5-Agent CRAG orchestration
+│   │   │   ├── router.py         # Query intent & filter extraction
+│   │   │   ├── retriever.py      # Hybrid search & parent resolution
+│   │   │   ├── grader.py         # Context relevance & sufficiency grading
+│   │   │   ├── rewriter.py       # HyDE, Step-Back & Decomposition rewriter
+│   │   │   ├── generator.py      # Answer synthesis & citation injection
+│   │   │   ├── graph.py          # Compiled LangGraph state machine
+│   │   │   └── state.py          # State dictionary schema
+│   │   ├── ingestion/            # Multimodal parsing & chunking engine
+│   │   │   ├── adaptive_parser.py# Document format router
+│   │   │   ├── parent_child_chunker.py # Hierarchical chunker (1024 / 128 tok)
+│   │   │   ├── contextual_headers.py   # Anthropic contextual header synthesizer
+│   │   │   ├── embedder.py       # Dense & sparse vectorization pipeline
+│   │   │   ├── fast_embedder.py  # Local ONNX FastEmbed wrapper (CPU)
+│   │   │   ├── audio_pipeline.py # Groq Whisper speech transcription
+│   │   │   └── pipeline.py       # End-to-end ingestion coordinator
+│   │   ├── retrieval/            # Vector store & search mechanics
+│   │   │   ├── qdrant_store.py   # Qdrant client & RRF hybrid queries
+│   │   │   └── reranker.py       # Local FlashRank cross-encoder reranker
+│   │   ├── routers/              # FastAPI endpoint controllers
+│   │   │   └── mcp.py            # External MCP registration endpoints
+│   │   ├── services/             # Core infrastructure clients
+│   │   │   ├── llm_client.py     # Gemini / Groq / NVIDIA unified client
+│   │   │   ├── supabase_client.py# Supabase & local JSON persistence manager
+│   │   │   ├── mcp_client.py     # MCP tool client discovery & invocation
+│   │   │   └── safety_guard.py   # Query content policy filter
+│   │   ├── middleware/           # FastAPI middleware
+│   │   │   └── session.py        # Multi-tenant UUID session isolation
+│   │   ├── mcp_server.py         # Standalone stdio/SSE Lumina MCP Server
+│   │   └── main.py               # FastAPI application entrypoint
+│   ├── tests/                    # 100+ automated pytest test files
+│   ├── verify_smoke.py           # Verification script for local models & keys
+│   └── requirements.txt          # Python dependencies
+├── frontend/
+│   ├── app/                      # Next.js 14 App Router
+│   │   ├── layout.tsx            # Global root layout & font definitions
+│   │   ├── page.tsx              # Main research workspace interface
+│   │   └── globals.css           # Tailwind custom utilities & design system
+│   ├── components/               # UI components
+│   │   ├── ThinkingArea.tsx      # Multi-mode cognitive reasoning visualizer
+│   │   ├── MCPModal.tsx          # MCP Hub manager & tool catalog
+│   │   ├── Sidebar.tsx           # Library, collections, & activity sidebar
+│   │   ├── ChatInput.tsx         # Multimodal composer with model selection
+│   │   ├── MessageList.tsx       # Conversation message feed
+│   │   ├── CitationDrawer.tsx    # Source passage citation slide-out
+│   │   └── Header.tsx            # Navigation & dark mode toggle
+│   ├── lib/
+│   │   ├── api.ts                # SSE client & backend REST client
+│   │   └── types.ts              # TypeScript interface definitions
+│   └── package.json              # Node dependencies & build scripts
+├── assets/Lumina.png              # Project banner asset
+├── architecture.md               # Detailed architectural specification
+└── README.md                     # Comprehensive project documentation
+```
+
+---
+
+## 🧪 Automated Testing & Verification
+
+Lumina includes an automated test suite covering all critical pathways:
+
+```bash
+# Run the complete test suite
+cd backend
+python -m pytest tests -v
+```
+
+### Test Coverage Areas:
+- **`test_llm_client.py`:** Verifies LLM initialization, message format conversions, and fallback behaviors.
+- **`test_parent_child_chunker.py`:** Validates chunking hierarchy invariants, token boundaries, and parent-child ID mapping.
+- **`test_contextual_headers.py`:** Tests contextual header synthesis, formatting, and text integrity.
+- **`test_crag_pipeline.py`:** Verifies the full LangGraph state machine (Router $\rightarrow$ Retriever $\rightarrow$ Grader $\rightarrow$ Rewriter $\rightarrow$ Generator).
+- **`test_reranker.py`:** Validates FlashRank cross-encoder execution on CPU.
+- **`test_session_middleware.py`:** Tests UUID validation, auto-issuing, and rejection of malformed session headers.
+- **`test_mcp_client.py`:** Tests MCP discovery, tool schema parsing, and execution.
+
+---
+
+## 🌐 Production Deployment Guide
+
+### Deploying the Backend (Render / Railway / Fly.io)
+1. Push the repository to GitHub.
+2. Create a new **Web Service** pointed at the `backend/` directory.
+3. Set the **Build Command:** `pip install -r requirements.txt`.
+4. Set the **Start Command:** `python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+5. Add your environment variables (`GEMINI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`).
+
+### Deploying the Frontend (Vercel)
+1. Import the repository into [Vercel](https://vercel.com).
+2. Set the **Root Directory** to `frontend`.
+3. Set the environment variable: `NEXT_PUBLIC_API_URL=https://your-deployed-backend.onrender.com`.
+4. Deploy!
+
+---
+
+## 📄 License & Acknowledgments
+
+Lumina is open-source software licensed under the **[MIT License](LICENSE)**.
+
+### Powered By Open Technologies:
+- [LangGraph & LangChain](https://github.com/langchain-ai/langgraph) — State graph agent orchestration.
+- [Qdrant](https://qdrant.tech/) — Vector database with native sparse BM25 payload support.
+- [FastEmbed](https://github.com/qdrant/fastembed) — Fast local CPU embeddings.
+- [FlashRank](https://github.com/PrithivirajDamodaran/FlashRank) — Ultra-lightweight CPU cross-encoder reranking.
+- [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) — Open standard for AI assistant tool interoperability.
+- [Next.js & React](https://nextjs.org/) — Responsive frontend workspace.
+
+<div align="center">
+<b>Built with precision for enterprise document intelligence. Zero SaaS lock-in.</b>
+</div>
