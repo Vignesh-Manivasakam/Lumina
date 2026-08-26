@@ -10,16 +10,7 @@ from app.agents.grader import GraderAgent
 from app.agents.retriever import RetrieverAgent
 from app.agents.rewriter import RewriterAgent
 from app.agents.router import RouterAgent
-from app.skills.causal_reasoning_skill import DeepCausalReasoningSkill
-from app.skills.code_analysis_skill import CodeAnalysisSkill
-from app.skills.contract_risk_skill import ContractRiskAnalyzerSkill
-from app.skills.data_extraction_skill import DataExtractionSkill
-from app.skills.deep_reasoning_skill import DeepReasoningSkill
-from app.skills.image_gen_skill import ImageGenSkill
-from app.skills.mcp_tool_skill import MCPToolSkill
 from app.skills.skill_registry import SkillRegistry, default_skill_registry
-from app.skills.summarization_skill import SummarizationSkill
-from app.skills.web_search_skill import WebSearchSkill
 
 logger = logging.getLogger(__name__)
 
@@ -40,16 +31,17 @@ class RAGState(TypedDict, total=False):
     chat_history: List[dict]
     stream: Optional[Any]
     source_docs: List[dict]
-    # Skills additions:
+    # Dynamic Markdown & Tool Skills additions:
+    active_skill: Optional[str]
+    active_skill_title: Optional[str]
+    system_prompt: Optional[str]
     image_result: Optional[dict]
     web_results: Optional[List[dict]]
     tool_result: Optional[dict]
-    # Phase 2/4 additions:
+    # Session & Observability additions:
     session_id: Optional[str]
     use_parent_resolution: bool
     status_emitter: Optional[Callable[[str, str, Optional[str]], None]]
-    # Phase 4.5: per-agent "thinking" notes — short strings emitted at
-    # decision moments so the UI can show *why* an agent did something.
     thinking_emitter: Optional[Callable[[str, str], None]]
 
 
@@ -58,12 +50,7 @@ AGENT_ORDER = ("router", "skill_executor", "retriever", "grader", "rewriter", "g
 
 
 def _wrap_with_status(agent_name: str, step: int, fn):
-    """Wrap an agent or node method so it emits ``agent_status`` events before/after.
-
-    The emitter, if present on the state, is called as
-    ``emitter(agent_name, status, optional_message)``. Missing emitter
-    is silently ignored so the agents remain usable without SSE plumbing.
-    """
+    """Wrap an agent or node method so it emits ``agent_status`` events before/after."""
 
     def wrapped(state: dict) -> dict:
         emitter = state.get("status_emitter")
@@ -89,21 +76,6 @@ def _wrap_with_status(agent_name: str, step: int, fn):
     return wrapped
 
 
-def _create_default_registry() -> SkillRegistry:
-    """Instantiate and register default skills."""
-    registry = SkillRegistry()
-    registry.register(WebSearchSkill())
-    registry.register(ImageGenSkill())
-    registry.register(MCPToolSkill())
-    registry.register(DeepReasoningSkill())
-    registry.register(CodeAnalysisSkill())
-    registry.register(SummarizationSkill())
-    registry.register(DataExtractionSkill())
-    registry.register(ContractRiskAnalyzerSkill())
-    registry.register(DeepCausalReasoningSkill())
-    return registry
-
-
 def build_crag_graph(
     router: RouterAgent,
     retriever: RetrieverAgent,
@@ -112,7 +84,7 @@ def build_crag_graph(
     generator: GeneratorAgent,
     skill_registry: Optional[SkillRegistry] = None,
 ):
-    registry = skill_registry or _create_default_registry()
+    registry = skill_registry or default_skill_registry
 
     def execute_skill(state: dict) -> dict:
         return registry.execute(state)
@@ -130,19 +102,8 @@ def build_crag_graph(
 
     def route_decision(state: RAGState) -> str:
         route = state.get("route")
-        if route in (
-            "web_search",
-            "image_gen",
-            "mcp_tool",
-            "deep_reasoning",
-            "code_analysis",
-            "summarization",
-            "data_extraction",
-            "contract_risk",
-            "contract-risk-analyzer",
-            "causal_reasoning",
-            "deep-causal-reasoning",
-        ):
+        # Tool skill routes that require execution in skill_executor node
+        if route in ("web_search", "image_gen", "mcp_tool"):
             return "skill_executor"
         if route in ("direct", "llm_direct"):
             return "generator"

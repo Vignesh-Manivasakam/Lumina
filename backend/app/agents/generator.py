@@ -1,3 +1,4 @@
+from typing import Optional
 from app.services.llm_client import LLMClient
 
 SYSTEM_PROMPT = """You are an intelligent, helpful enterprise assistant with advanced vision and document capabilities.
@@ -8,6 +9,7 @@ Guidelines:
 3. CITATIONS: When using document context, cite your sources as [Source 1], [Source 2] etc.
 4. REPRESENTATION: If the user asks for a chart, table, or visual representation, create a clean, formatted Markdown table or visual text diagram summarizing the key data points, metrics, and comparisons.
 5. GENERAL: If referring to 'the person', 'the candidate', or 'the author', relate it directly to the subject of the document context."""
+
 
 class GeneratorAgent:
     def __init__(self, llm_client: LLMClient):
@@ -52,8 +54,21 @@ class GeneratorAgent:
         else:
             user_content = f"Context:\n{context}\n\nQuestion: {query}"
 
+        # Determine active system prompt (dynamic markdown skill or default)
+        active_skill_prompt = state.get("system_prompt")
+        if active_skill_prompt:
+            effective_system = (
+                f"{active_skill_prompt}\n\n---\n"
+                f"Core Operational Rules:\n"
+                f"1. When using document context, cite sources as [Source 1], [Source 2] etc.\n"
+                f"2. Never hallucinate citations if no source documents are provided.\n"
+                f"3. Maintain strict factual precision and grounded reasoning."
+            )
+        else:
+            effective_system = SYSTEM_PROMPT
+
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": effective_system},
         ]
 
         # Add history in user/assistant format

@@ -13,6 +13,7 @@
 [![Qdrant](https://img.shields.io/badge/Vector_DB-Qdrant_Cloud-DC2626?logo=qdrant&logoColor=white)](https://qdrant.tech)
 [![FastEmbed](https://img.shields.io/badge/Embeddings-FastEmbed_BGE_+_BM25-4F46E5)](https://qdrant.github.io/fastembed/)
 [![FlashRank](https://img.shields.io/badge/Reranker-FlashRank_MiniLM-EC4899)](https://github.com/PrithivirajDamodaran/FlashRank)
+[![Skills](https://img.shields.io/badge/Skills-Dynamic_Markdown_Engine-10B981)](backend/app/skills/definitions)
 [![MCP](https://img.shields.io/badge/Protocol-Model_Context_Protocol-8B5CF6?logo=anthropic&logoColor=white)](https://modelcontextprotocol.io)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 

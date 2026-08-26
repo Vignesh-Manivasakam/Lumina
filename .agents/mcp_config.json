@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "playwright-headless": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--headless",
+        "--viewport-size=1280x720"
+      ]
+    }
+  }
+}

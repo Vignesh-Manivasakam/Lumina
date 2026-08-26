@@ -29,8 +29,7 @@ npm-debug.log*
 Thumbs.db
 *.log
 
-# Workspace agents
-.agents/
+# Workspace temp & cache
 .gemini/
 temp/
 Profile Update/

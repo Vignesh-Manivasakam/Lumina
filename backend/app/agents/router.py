@@ -1,4 +1,4 @@
-"""Query router agent with heuristic pre-filtering and classification.
+"""Query router agent with heuristic pre-filtering, classification, and dynamic skill routing.
 
 Routes queries into:
 - 'direct'     → greeting/chitchat or meta queries, no retrieval needed
@@ -8,8 +8,7 @@ Routes queries into:
 - 'simple'     → single-hop factual query
 - 'complex'    → multi-hop synthesis or multi-step reasoning
 
-Also classifies query_type:
-- 'keyword' | 'numerical' | 'semantic' | 'multi_hop' | 'greeting' | 'image_gen' | 'web_search' | 'multimodal'
+Also attaches the active dynamic Markdown skill (e.g. contract-risk, causal-reasoning, sonnet/opus/fable).
 """
 from __future__ import annotations
 
@@ -52,21 +51,6 @@ _MCP_TOOL_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Heuristic patterns for specialized skills
-_CONTRACT_RISK_RE = re.compile(
-    r"\b(?:review\s+(?:the\s+)?contract|assess\s+risk\s+in\s+(?:the\s+)?(?:contract|agreement|nda|msa|sow)|"
-    r"redline\s+(?:the\s+)?(?:nda|msa|sow|contract|agreement)|contract\s+risk\s+analysis|"
-    r"indemnity\s+clause\s+risk|liability\s+cap\s+risk|silent\s+clauses\s+in\s+contract)\b",
-    re.IGNORECASE,
-)
-
-_CAUSAL_RE = re.compile(
-    r"\b(?:why\s+did\s+.+\s+(?:drop|spike|fail|increase|decrease|change|crash|slow\s+down)|"
-    r"root\s+cause\s+of|what\s+caused\s+.+|post-?mortem\s+for|5-?whys\s+analysis|causal\s+analysis\s+of)\b",
-    re.IGNORECASE,
-)
-
-# Heuristic pattern for direct LLM general knowledge, math, coding, creative generation
 _DIRECT_LLM_RE = re.compile(
     r"^(?:\s*(?:what\s+is|calculate|compute|solve)?\s*[\d\s\+\-\*\/\^\(\)\.\%]+[?\s]*$)|"
     r"(?:\b(?:write\s+(?:a\s+|me\s+)?(?:python|javascript|typescript|c\+\+|java|go|rust|sql|html|css|bash|code|function|script|class|program)|"
@@ -80,15 +64,13 @@ _DIRECT_LLM_RE = re.compile(
 
 
 class RouterAgent:
-    """Classifies user queries with heuristic pre-filtering and LLM fallback."""
+    """Classifies user queries with heuristic pre-filtering, LLM fallback, and dynamic skill routing."""
 
     SYSTEM_PROMPT = """You are a query classification and routing expert for an enterprise RAG system.
 Given a user query, classify both the routing strategy and query type.
 
 Routing categories:
 - llm_direct: general knowledge, coding assistance, math calculations, logical reasoning, creative writing, or definitions that do NOT require searching uploaded documents
-- contract_risk: requests to review, audit, assess risk, or redline commercial contracts/NDAs/MSAs
-- causal_reasoning: requests investigating root causes, "why" questions, anomalies, or post-mortems
 - simple: single factual question about uploaded documents or specific company records answerable from one passage
 - complex: requires synthesizing multiple uploaded documents, cross-source comparisons, or multi-step reasoning over indexed holdings
 - multimodal: asks about a chart, diagram, image, or visual layout
@@ -139,58 +121,70 @@ Output ONLY the rewritten standalone query string with no commentary, formatting
                         "content": f"Conversation History:\n{hist_text}\n\nFollow-up question:\n{query}",
                     },
                 ],
-                max_tokens=60,
+                max_tokens=80,
                 temperature=0.0,
             )
-            cleaned = res.content.strip().strip('"\'')
-            if cleaned and len(cleaned) > 2:
-                return cleaned
+            rewritten = res.content.strip().strip('"\'')
+            if rewritten and len(rewritten) > 2 and "\n" not in rewritten:
+                return rewritten
         except Exception as exc:
-            logger.warning("Contextual query reformulation failed: %s; using original query", exc)
+            logger.debug("Conversational coreference resolution bypassed: %s", exc)
+
         return query
 
     def _match_heuristics(self, query: str) -> Optional[Tuple[str, str]]:
         """Check for instant pre-filter pattern matches."""
         q = query.strip()
-        if not q:
+
+        # 1. Greetings / Chitchat
+        if _GREETING_RE.match(q):
             return "direct", "greeting"
-        if _GREETING_RE.search(q):
-            return "direct", "greeting"
+
+        # 2. Image generation
         if _IMAGE_GEN_RE.search(q):
             return "image_gen", "image_gen"
+
+        # 3. Web search explicitly requested
         if _WEB_SEARCH_RE.search(q):
             return "web_search", "web_search"
+
+        # 4. MCP tool explicitly requested
         if _MCP_TOOL_RE.search(q):
             return "mcp_tool", "mcp_tool"
-        if _CONTRACT_RISK_RE.search(q):
-            return "contract_risk", "semantic"
-        if _CAUSAL_RE.search(q):
-            return "causal_reasoning", "multi_hop"
-        if _DIRECT_LLM_RE.search(q):
+
+        # 5. Direct LLM query (general knowledge, coding, math, reasoning)
+        if _DIRECT_LLM_RE.match(q):
             return "llm_direct", "semantic"
+
         return None
 
     def route(self, state: dict) -> dict:
-        """Route user query with heuristic pre-filter and LLM classifier."""
-        query = state.get("query", "")
-        has_image = bool(state.get("user_image_b64"))
+        """Route user query with heuristic pre-filter, LLM classifier, and dynamic skill routing."""
+        original_query = state.get("query", "")
         history = state.get("chat_history", [])
+        session_id = state.get("session_id")
 
-        # Step 0: Contextual query reformulation for follow-up turns
-        if history and not has_image and query.strip():
-            standalone_query = self._contextualize_query(query, history)
-            if standalone_query and standalone_query.lower() != query.lower():
-                state["original_query"] = query
-                state["query"] = standalone_query
-                query = standalone_query
-                logger.info("Contextualized query from '%s' to '%s'", state.get("original_query"), query)
+        # Step 0: Conversational coreference resolution
+        query = self._contextualize_query(original_query, history)
+        state["query"] = query
 
-        # If user attached an image, bypass LLM routing and route to multimodal
-        if has_image:
+        # Direct attachment check
+        attached_file = state.get("attached_file")
+        if attached_file and attached_file.get("content"):
+            state["route"] = "llm_direct"
+            state["query_type"] = "semantic"
+            state["filters"] = self._extract_filters(query)
+            state["thinking_note"] = f"Direct document attached: '{attached_file.get('name')}' — bypassing RAG index."
+            self._attach_dynamic_skill(state, query, session_id)
+            return state
+
+        # Multimodal image check
+        if state.get("user_image_b64"):
             state["route"] = "multimodal"
             state["query_type"] = "multimodal"
             state["filters"] = self._extract_filters(query)
             state["thinking_note"] = "Image attached — routing to multimodal path."
+            self._attach_dynamic_skill(state, query, session_id)
             return state
 
         # Explicit web search mode check
@@ -199,7 +193,8 @@ Output ONLY the rewritten standalone query string with no commentary, formatting
             state["route"] = "web_search"
             state["query_type"] = "web_search"
             state["filters"] = self._extract_filters(query)
-            state["thinking_note"] = "Web Search mode forced by user — routing to live internet search & temporary vector indexing."
+            state["thinking_note"] = "Web Search mode forced by user — routing to live internet search."
+            self._attach_dynamic_skill(state, query, session_id)
             return state
 
         # Step 1: Heuristic pre-filter check
@@ -213,6 +208,7 @@ Output ONLY the rewritten standalone query string with no commentary, formatting
             state["filters"] = self._extract_filters(query)
             dept_note = f" Detected dept filter: {state['filters']['dept']}." if state["filters"] else ""
             state["thinking_note"] = f"Heuristic pre-filter: routed to '{route}' ({query_type}).{dept_note}"
+            self._attach_dynamic_skill(state, query, session_id)
             return state
 
         # Step 2: LLM Classification for ambiguous queries
@@ -237,41 +233,18 @@ Output ONLY the rewritten standalone query string with no commentary, formatting
                     route = parsed.get("route", "").strip().lower()
                     query_type = parsed.get("query_type", "").strip().lower()
             except Exception:
-                # Handle single-word classification fallback
                 clean_word = content.strip().lower().strip('"\'')
-                if clean_word in ("simple", "complex", "multimodal", "direct", "llm_direct", "image_gen", "web_search", "mcp_tool", "contract_risk", "causal_reasoning"):
+                if clean_word in ("simple", "complex", "multimodal", "direct", "llm_direct", "image_gen", "web_search", "mcp_tool"):
                     route = clean_word
         except Exception as exc:
             logger.warning("Router LLM call failed: %s; defaulting to simple", exc)
             route = "simple"
 
-        # Validate against allowed routes
-        allowed_routes = (
-            "simple",
-            "complex",
-            "multimodal",
-            "direct",
-            "llm_direct",
-            "image_gen",
-            "web_search",
-            "mcp_tool",
-            "contract_risk",
-            "causal_reasoning",
-        )
+        allowed_routes = ("simple", "complex", "multimodal", "direct", "llm_direct", "image_gen", "web_search", "mcp_tool")
         if route not in allowed_routes:
             route = "simple"
 
-        allowed_query_types = (
-            "keyword",
-            "numerical",
-            "semantic",
-            "multi_hop",
-            "greeting",
-            "image_gen",
-            "web_search",
-            "multimodal",
-            "mcp_tool",
-        )
+        allowed_query_types = ("keyword", "numerical", "semantic", "multi_hop", "greeting", "image_gen", "web_search", "multimodal", "mcp_tool")
         if query_type not in allowed_query_types:
             query_type = "semantic"
 
@@ -280,7 +253,24 @@ Output ONLY the rewritten standalone query string with no commentary, formatting
         state["filters"] = self._extract_filters(query)
         dept_note = f" Detected dept filter: {state['filters']['dept']}." if state["filters"] else ""
         state["thinking_note"] = f"Classified as '{route}' ({query_type}).{dept_note}"
+
+        # Step 3: Attach dynamic skill protocol
+        self._attach_dynamic_skill(state, query, session_id)
         return state
+
+    def _attach_dynamic_skill(self, state: dict, query: str, session_id: Optional[str]) -> None:
+        """Attach active Markdown skill system prompt and note."""
+        try:
+            from app.skills.skill_router import default_skill_router
+            matched_skill, tier = default_skill_router.route_skill(query, session_id=session_id)
+            if matched_skill:
+                state["active_skill"] = matched_skill.name
+                state["active_skill_title"] = matched_skill.title
+                state["system_prompt"] = matched_skill.prompt
+                skill_note = f" | Skill: {matched_skill.title} [{matched_skill.category}] ({tier})"
+                state["thinking_note"] = (state.get("thinking_note") or "") + skill_note
+        except Exception as exc:
+            logger.debug("Dynamic skill selection notice: %s", exc)
 
     def _extract_filters(self, query: str) -> dict:
         """Heuristic to detect department mentions and construct Qdrant filter."""
@@ -295,3 +285,6 @@ Output ONLY the rewritten standalone query string with no commentary, formatting
             if kw in query.lower():
                 filters["dept"] = dept
         return filters
+
+
+__all__ = ["RouterAgent"]
