@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import List
 
 from app.config import settings
+from app.ingestion.autosense_orchestrator import AutosenseOrchestrator
 from app.ingestion.embedder import MultimodalEmbedder
 from app.ingestion.fast_embedder import LocalEmbedder
 from app.retrieval.cpu_reranker import CPUReranker
@@ -42,6 +43,7 @@ class RetrieverAgent:
         self.embedder = embedder
         self.llm = llm_client or LLMClient()
         self.reranker = reranker or CPUReranker()
+        self.autosense = AutosenseOrchestrator()
         # Back-compat alias for code paths still reading .nvidia
         self.nvidia = self.llm
 
@@ -57,13 +59,18 @@ class RetrieverAgent:
         use_parents = state.get("use_parent_resolution", True)
         query_type = (state.get("query_type") or "").strip().lower()
 
-        # Step 1: determine query-aware retrieval weights
-        bm25_weight, dense_weight = QUERY_TYPE_WEIGHTS.get(query_type, (0.5, 0.5))
+        # Step 1: determine query-aware retrieval weights with Autosense fallback
+        if query_type in QUERY_TYPE_WEIGHTS:
+            bm25_weight, dense_weight = QUERY_TYPE_WEIGHTS[query_type]
+        elif hasattr(self, "autosense") and self.autosense:
+            bm25_weight, dense_weight = self.autosense.route_query(query, query_type)
+        else:
+            bm25_weight, dense_weight = QUERY_TYPE_WEIGHTS.get(query_type, (0.5, 0.5))
 
         # Step 2: embed the query (BGE-M3)
         dense_vec = self._embed_query(query, image_b64)
 
-        # Step 3: hybrid search restricted to child chunks (Phase 3)
+        # Phase 1: Broad BM25/Vector Hybrid Retrieval
         child_hits = self.store.hybrid_search(
             dense_vector=dense_vec,
             query_text=query,
@@ -75,7 +82,7 @@ class RetrieverAgent:
             dense_weight=dense_weight,
         )
 
-        # Step 4: rerank child hits via FlashRank
+        # Phase 2: CPUReranker Cross-Encoder
         if len(child_hits) > settings.TOP_K_RERANK:
             child_hits = self.reranker.rerank(query, child_hits)[:settings.TOP_K_RERANK]
 

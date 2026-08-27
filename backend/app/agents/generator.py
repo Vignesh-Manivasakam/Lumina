@@ -31,8 +31,13 @@ class GeneratorAgent:
             file_content = attached_file.get("content", "")
             context_parts.append(f"[Direct Attachment: {file_name}]\n{file_content}")
 
+        seen_texts = set()
         for i, doc in enumerate(docs, 1):
-            ctx = f"[Source {i}] (modality: {doc['modality']})\n{doc['text_repr']}"
+            text = doc.get('text_repr', '').strip()
+            if not text or text in seen_texts:
+                continue
+            seen_texts.add(text)
+            ctx = f"[Source {i}] (modality: {doc.get('modality', 'text')})\n{text}"
             context_parts.append(ctx)
 
         context = (

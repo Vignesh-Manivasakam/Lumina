@@ -114,6 +114,11 @@ def build_crag_graph(
         if route == "image_gen":
             return "end"
         return "generator"
+        
+    def retriever_decision(state: RAGState) -> str:
+        if state.get("route") == "simple":
+            return "generator"
+        return "grader"
 
     graph.add_conditional_edges(
         "router",
@@ -139,7 +144,10 @@ def build_crag_graph(
     graph.add_conditional_edges(
         "grader",
         grader.should_rewrite,
-        {"rewrite": "rewriter", "generate": "generator"},
+        {
+            "rewrite": "rewriter", 
+            "generate": "generator",
+        },
     )
 
     graph.add_edge("rewriter", "retriever")

@@ -5,7 +5,7 @@ from typing import Optional
 from app.ingestion.adaptive_parser import AdaptiveDocumentParser
 from app.ingestion.audio_pipeline import AudioPipeline
 from app.ingestion.contextual_headers import ContextualHeaderGenerator
-from app.ingestion.document_analyzer import DocumentAnalyzer
+from app.ingestion.autosense_orchestrator import AutosenseOrchestrator
 from app.ingestion.embedder import MultimodalEmbedder
 from app.ingestion.fast_embedder import LocalEmbedder
 from app.ingestion.image_extractor import ImageExtractor
@@ -27,7 +27,7 @@ class IngestionPipeline:
     ):
         self.llm = llm or LLMClient()
         self.doc_parser = AdaptiveDocumentParser()
-        self.analyzer = DocumentAnalyzer()
+        self.autosense = AutosenseOrchestrator()
         self.img_extractor = ImageExtractor(self.llm)
         self.audio_pipeline = AudioPipeline()
         self.video_pipeline = VideoPipeline(self.llm)
@@ -82,8 +82,8 @@ class IngestionPipeline:
                 parsed_doc = self.doc_parser.parse(file_path)
                 full_doc_text = parsed_doc.get("text_markdown", "") or ""
 
-                strategy = self.analyzer.analyze(parsed_doc)
-                print(f"Selected chunking strategy: {strategy.name}")
+                strategy = self.autosense.determine_chunking_strategy(parsed_doc)
+                print(f"Selected chunking strategy via Autosense: {strategy.name}")
 
                 chunks = self.chunker.chunk_pages(
                     parsed_doc=parsed_doc,

@@ -66,7 +66,7 @@ export function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
   const [activeTab, setActiveTab] = useState<'browse' | 'add'>('browse');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  
+
   // Custom skill creation state
   const [customMarkdown, setCustomMarkdown] = useState(STARTER_TEMPLATE);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -176,21 +176,19 @@ export function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
             <div className="flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
               <button
                 onClick={() => setActiveTab('browse')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                  activeTab === 'browse'
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${activeTab === 'browse'
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 Browse ({skills.length})
               </button>
               <button
                 onClick={() => setActiveTab('add')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${
-                  activeTab === 'add'
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${activeTab === 'add'
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 <Plus size={12} /> Add Custom Skill
               </button>
@@ -227,11 +225,10 @@ export function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-2.5 py-1 text-[11px] font-medium rounded-lg capitalize shrink-0 transition-colors ${
-                        selectedCategory === cat
+                      className={`px-2.5 py-1 text-[11px] font-medium rounded-lg capitalize shrink-0 transition-colors ${selectedCategory === cat
                           ? 'bg-lumina-600 text-white'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                      }`}
+                        }`}
                     >
                       {cat}
                     </button>
@@ -348,11 +345,10 @@ export function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
 
               {statusMsg && (
                 <div
-                  className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
-                    statusMsg.type === 'success'
+                  className={`p-3 rounded-xl text-xs flex items-center gap-2 ${statusMsg.type === 'success'
                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                       : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
-                  }`}
+                    }`}
                 >
                   {statusMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
                   {statusMsg.text}

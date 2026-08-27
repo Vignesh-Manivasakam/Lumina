@@ -130,6 +130,23 @@ class WebSearchSkill(Skill):
                 content = (item.get("content") or "").strip()
                 score = float(item.get("score") if item.get("score") is not None else max(0.95 - (i * 0.05), 0.6))
 
+                if len(content) < 200 or "javascript" in content.lower():
+                    try:
+                        from firecrawl import FirecrawlApp
+                        
+                        firecrawl_key = getattr(settings, "FIRECRAWL_API_KEY", "")
+                        if firecrawl_key:
+                            app = FirecrawlApp(api_key=firecrawl_key)
+                            scrape_result = app.scrape_url(url, params={'formats': ['markdown']})
+                            deep_content = scrape_result.get("markdown", "")
+                            
+                            if deep_content and len(deep_content) > len(content):
+                                content = deep_content[:2000] # Cap length
+                                if thinking_emitter:
+                                    thinking_emitter("skill_executor", f"Used Firecrawl to deep-extract {url}")
+                    except Exception as exc:
+                        logger.debug("Firecrawl fallback failed for %s: %s", url, exc)
+
                 text_repr = f"Source Title: {title}\nSource URL: {url}\n\n{content}"
                 chunk_id = f"web_{uuid.uuid4().hex[:8]}_{i}"
 

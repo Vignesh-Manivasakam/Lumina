@@ -17,26 +17,24 @@ from app.services.llm_client import LLMClient
 logger = logging.getLogger(__name__)
 
 SINGLE_GRADER_PROMPT = """You are a relevance grader for an enterprise RAG system.
-Given a query and a retrieved document passage, score the relevance from 0.0 to 1.0.
+Given a query and a retrieved document passage, score the relevance as exactly one of: "correct", "ambiguous", or "incorrect".
 
 Score guide:
-1.0 = Directly answers the query
-0.7 = Partially answers, has related information
-0.4 = Tangentially related
-0.0 = Irrelevant
+- correct = Directly answers the query or has highly relevant information.
+- ambiguous = Partially answers, has related information, or might be relevant but needs more context.
+- incorrect = Irrelevant or tangentially related.
 
-Return ONLY a JSON: {"score": <float>, "reason": "<one sentence>"}"""
+Return ONLY a JSON: {"score": "<correct|ambiguous|incorrect>", "reason": "<one sentence>"}"""
 
 BATCH_GRADER_PROMPT = """You are a relevance grader for an enterprise RAG system.
-Given a query and a list of numbered retrieved document passages, score the relevance of each document from 0.0 to 1.0.
+Given a query and a list of numbered retrieved document passages, score the relevance of each document as exactly one of: "correct", "ambiguous", or "incorrect".
 
 Score guide:
-1.0 = Directly answers the query
-0.7 = Partially answers, has related information
-0.4 = Tangentially related
-0.0 = Irrelevant
+- correct = Directly answers the query or has highly relevant information.
+- ambiguous = Partially answers, has related information, or might be relevant but needs more context.
+- incorrect = Irrelevant or tangentially related.
 
-Return ONLY a JSON array of objects: [{"doc_index": <int>, "score": <float>, "reason": "<one sentence>"}, ...]
+Return ONLY a JSON array of objects: [{"doc_index": <int>, "score": "<correct|ambiguous|incorrect>", "reason": "<one sentence>"}, ...]
 Do not include any explanation or markdown preamble outside the JSON array."""
 
 
@@ -66,15 +64,28 @@ class GraderAgent:
             try:
                 result = json.loads(content)
                 if isinstance(result, dict):
-                    return float(result.get("score", 0.0))
+                    val = result.get("score", 0.7)
                 elif isinstance(result, list) and result:
-                    return float(result[0].get("score", 0.0))
-                return float(result)
+                    val = result[0].get("score", 0.7) if isinstance(result[0], dict) else result[0]
+                else:
+                    val = result
+                try:
+                    return float(val)
+                except (ValueError, TypeError):
+                    s_str = str(val).lower()
+                    if "correct" in s_str:
+                        return 1.0
+                    elif "ambiguous" in s_str:
+                        return 0.7
+                    return 0.1
             except Exception:
                 score_match = re.search(r'"score"\s*:\s*([0-9.]+)', content)
                 if score_match:
                     return float(score_match.group(1))
-                return float(content)
+                try:
+                    return float(content)
+                except ValueError:
+                    return 0.7
         except Exception as exc:
             logger.warning(
                 "Error grading individual document: %s. Defaulting score to 0.7.",
@@ -82,7 +93,7 @@ class GraderAgent:
             )
             return 0.7
 
-    def _grade_batch_docs(self, query: str, docs: List[dict]) -> Dict[int, float]:
+    def _grade_batch_docs(self, query: str, docs: List[dict]) -> Dict[int, str]:
         """Grade all retrieved documents in a single LLM prompt."""
         doc_sections: List[str] = []
         for i, doc in enumerate(docs):
@@ -114,11 +125,24 @@ class GraderAgent:
                 for item in parsed:
                     if isinstance(item, dict):
                         idx = item.get("doc_index") if "doc_index" in item else item.get("index")
-                        score = item.get("score")
-                        if idx is not None and score is not None:
-                            scores[int(idx)] = float(score)
+                        score_val = item.get("score")
+                        if idx is not None and score_val is not None:
+                            try:
+                                scores[int(idx)] = float(score_val)
+                            except (ValueError, TypeError):
+                                s_str = str(score_val).lower()
+                                if "correct" in s_str:
+                                    scores[int(idx)] = 1.0
+                                elif "ambiguous" in s_str:
+                                    scores[int(idx)] = 0.7
+                                else:
+                                    scores[int(idx)] = 0.1
             elif isinstance(parsed, dict) and "score" in parsed and len(docs) == 1:
-                scores[0] = float(parsed["score"])
+                score_val = parsed["score"]
+                try:
+                    scores[0] = float(score_val)
+                except (ValueError, TypeError):
+                    scores[0] = 0.7
         except Exception:
             # Fallback regex extraction of doc_index and score
             matches = re.findall(
@@ -129,6 +153,22 @@ class GraderAgent:
                 scores[int(idx_str)] = float(score_str)
 
         return scores
+
+    def _log_decisions(self, query: str, docs: List[dict]) -> None:
+        try:
+            import os, datetime
+            log_dir = getattr(settings, "GRADER_LOG_DIR", "grader_logs")
+            os.makedirs(log_dir, exist_ok=True)
+            log_path = os.path.join(log_dir, "decisions.jsonl")
+            with open(log_path, "a") as f:
+                log_entry = {
+                    "timestamp": datetime.datetime.utcnow().isoformat(),
+                    "query": query,
+                    "decisions": [{"id": d.get("id", ""), "grade": d.get("relevance_score", "unknown")} for d in docs]
+                }
+                f.write(json.dumps(log_entry) + "\n")
+        except Exception as exc:
+            logger.error("Failed to log grader decisions: %s", exc)
 
     def grade(self, state: dict) -> dict:
         """Score retrieved documents against query and filter relevant ones."""
@@ -162,6 +202,8 @@ class GraderAgent:
             if doc["relevance_score"] >= settings.RELEVANCE_THRESHOLD:
                 scored_docs.append(doc)
 
+        self._log_decisions(query, docs)
+
         state["relevant_docs"] = scored_docs
         state["is_sufficient"] = len(scored_docs) >= 2
         decision = (
@@ -177,7 +219,6 @@ class GraderAgent:
 
     def should_rewrite(self, state: dict) -> Literal["rewrite", "generate"]:
         """LangGraph conditional edge to decide next state node."""
-        # If this is a multimodal query, skip rewriting and go straight to generation
         if state.get("route") == "multimodal":
             return "generate"
 
@@ -191,3 +232,4 @@ class GraderAgent:
             return "generate"
 
         return "rewrite"
+

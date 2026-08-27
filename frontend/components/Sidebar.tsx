@@ -14,6 +14,7 @@ import {
   Loader2,
   Plus,
   Server,
+  Sparkles,
   Trash2,
   Upload,
   Zap,
@@ -218,6 +219,17 @@ export function Sidebar({
               <span className="text-[10px] font-mono text-slate-400">Hub</span>
             )}
           </button>
+
+          {/* Cognitive Skills Button */}
+          {onOpenSkillsModal && (
+            <button
+              onClick={onOpenSkillsModal}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left text-slate-600 dark:text-slate-400 hover:bg-slate-100/70 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+            >
+              <Sparkles size={15} className="shrink-0 opacity-80 text-amber-500" />
+              <span className="flex-1">Cognitive Skills</span>
+            </button>
+          )}
         </div>
 
         {/* Middle Scrollable Section */}
@@ -393,15 +405,6 @@ export function Sidebar({
                   </div>
                 );
               })}
-
-              {onOpenSkillsModal && (
-                <button
-                  onClick={onOpenSkillsModal}
-                  className="w-full py-2 px-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
-                >
-                  <Zap size={13} className="text-lumina-500" /> Manage Cognitive Skills
-                </button>
-              )}
 
               <button
                 onClick={onOpenMCPModal}

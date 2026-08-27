@@ -58,4 +58,6 @@ graphify-out/
 .env.*.local
 .claude-flow/data/
 .claude-flow/logs/
+grader_logs/
+
 .claude-flow/sessions/

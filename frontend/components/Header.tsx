@@ -50,18 +50,8 @@ export function Header({
         )}
       </div>
 
-      {/* Right side: Skills Hub button & Dark / Light Mode Toggle */}
+      {/* Right side: Dark / Light Mode Toggle */}
       <div className="flex items-center gap-2">
-        {onOpenSkillsModal && (
-          <button
-            onClick={onOpenSkillsModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-lumina-600 dark:hover:text-lumina-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-[#EDF3FA] dark:border-slate-800 hover:border-[#DCE5F2] dark:hover:border-slate-700 shadow-2xs"
-            title="Manage Cognitive Skills & Add Custom Skills"
-          >
-            <Sparkles size={14} className="text-lumina-500" />
-            <span className="hidden sm:inline">Cognitive Skills</span>
-          </button>
-        )}
 
         {onToggleDarkMode && (
           <button
