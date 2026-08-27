@@ -146,6 +146,15 @@ export interface ThinkingEvent {
   timestamp?: number;
 }
 
+export interface UsageInfo {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  latency_ms?: number;
+  model?: string;
+  route?: string;
+}
+
 export type SSEEvent =
   | { type: 'text'; content: string }
   | { type: 'sources'; sources: Source[] }
@@ -156,6 +165,7 @@ export type SSEEvent =
   | { type: 'web_results'; results: WebSearchResult[] }
   | { type: 'tool_result'; result: any }
   | { type: 'voice_audio'; audio_b64: string; format?: string }
+  | { type: 'usage_info'; usage: UsageInfo }
   | { type: 'error'; content: string }
   | { type: 'done' };
 

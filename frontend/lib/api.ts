@@ -9,6 +9,7 @@ import {
   RetrievalInfo,
   Source,
   SSEEvent,
+  UsageInfo,
   WebSearchResult,
 } from './types';
 
@@ -41,6 +42,7 @@ export interface StreamChatCallbacks {
   onWebResults?: (results: WebSearchResult[]) => void;
   onToolResult?: (result: any) => void;
   onVoiceAudio?: (audioB64: string, format?: string) => void;
+  onUsage?: (usage: UsageInfo) => void;
   onError?: (err: string) => void;
   sessionId?: string;
   webSearchMode?: 'auto' | 'always' | 'off';
@@ -70,6 +72,7 @@ export async function streamChat(
     onWebResults,
     onToolResult,
     onVoiceAudio,
+    onUsage,
     onError,
     sessionId,
     webSearchMode,
@@ -174,6 +177,9 @@ export async function streamChat(
             break;
           case 'voice_audio':
             onVoiceAudio?.(parsed.audio_b64, parsed.format);
+            break;
+          case 'usage_info':
+            onUsage?.(parsed.usage);
             break;
           case 'error':
             onError?.(parsed.content);

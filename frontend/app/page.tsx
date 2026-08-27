@@ -23,6 +23,7 @@ import {
   createConversation,
   listMCPConnections,
   getSessionHistory,
+  getSessionUsage,
 } from '../lib/api';
 
 import { Header } from '../components/Header';
@@ -83,12 +84,33 @@ export default function Home() {
     }
   }, []);
 
+  const loadSessionUsage = useCallback(async (sessionId?: string) => {
+    try {
+      const usage = await getSessionUsage(sessionId);
+      if (usage) {
+        if (typeof usage.total_tokens === 'number') {
+          setTokensUsed(usage.total_tokens);
+          localStorage.setItem('lumina_tokens_used', String(usage.total_tokens));
+        }
+        if (typeof usage.total_queries === 'number') {
+          setLifetimeQueries(usage.total_queries);
+          localStorage.setItem('lumina_queries_run', String(usage.total_queries));
+        }
+      }
+    } catch {
+      const savedTokens = localStorage.getItem('lumina_tokens_used');
+      const parsed = savedTokens ? parseInt(savedTokens, 10) : 0;
+      setTokensUsed(isNaN(parsed) || parsed < 0 ? 0 : parsed);
+    }
+  }, []);
+
   useEffect(() => {
     const uuid = getOrCreateSessionUUID();
     setSessionUUID(uuid);
     loadDocuments();
     loadConversations(uuid);
     loadMCPConnections();
+    loadSessionUsage(uuid);
 
     // Load persisted queries count with proactive sanitization
     const savedQueries = localStorage.getItem('lumina_queries_run');
@@ -105,14 +127,14 @@ export default function Home() {
       setLifetimeQueries(0);
     }
 
-    // Load persisted tokens used
+    // Load persisted tokens used without mock defaults
     const savedTokens = localStorage.getItem('lumina_tokens_used');
     if (savedTokens) {
       const parsed = parseInt(savedTokens, 10);
-      setTokensUsed(isNaN(parsed) || parsed < 0 ? 12450 : parsed);
+      setTokensUsed(isNaN(parsed) || parsed < 0 ? 0 : parsed);
     } else {
-      localStorage.setItem('lumina_tokens_used', '12450');
-      setTokensUsed(12450);
+      localStorage.setItem('lumina_tokens_used', '0');
+      setTokensUsed(0);
     }
 
     const savedTheme = localStorage.getItem('lumina_dark_mode');
@@ -120,7 +142,7 @@ export default function Home() {
     const isDark = savedTheme !== null ? savedTheme === 'true' : prefersDark;
     setDarkMode(isDark);
     document.documentElement.classList.toggle('dark', isDark);
-  }, [loadDocuments, loadConversations, loadMCPConnections]);
+  }, [loadDocuments, loadConversations, loadMCPConnections, loadSessionUsage]);
 
   const toggleDarkMode = () => {
     setDarkMode((prev) => {
@@ -216,10 +238,13 @@ export default function Home() {
       },
     ]);
 
+    let receivedUsage = false;
+
     await streamChat(queryToSend, historySnapshot, imageToSend, {
       model: selectedModel,
       webSearchMode: webSearchMode,
       attachment: currentAttachment || undefined,
+      sessionId: activeConversation?.session_id || sessionUUID,
       onChunk: (token) => {
         setMessages((prev) =>
           prev.map((msg) =>
@@ -267,6 +292,16 @@ export default function Home() {
           prev.map((msg) => (msg.id === assistantId ? { ...msg, tool_result: tool } : msg)),
         );
       },
+      onUsage: (usage) => {
+        if (usage?.total_tokens) {
+          receivedUsage = true;
+          setTokensUsed((prev) => {
+            const next = prev + usage.total_tokens;
+            localStorage.setItem('lumina_tokens_used', String(next));
+            return next;
+          });
+        }
+      },
       onError: (err) => {
         setErrorBanner(err);
         setMessages((prev) =>
@@ -281,17 +316,20 @@ export default function Home() {
 
     setIsStreaming(false);
 
-    // Calculate approximate tokens consumed (prompt + retrieval context + generation)
-    const estimatedQueryTokens = Math.max(35, Math.round(queryToSend.length / 4)) + 420;
-    setTokensUsed((prev) => {
-      const next = prev + estimatedQueryTokens;
-      localStorage.setItem('lumina_tokens_used', String(next));
-      return next;
-    });
+    // If server SSE did not supply usage event, fallback to standard token calculation
+    if (!receivedUsage) {
+      const estimatedQueryTokens = Math.max(15, Math.round(queryToSend.length / 4));
+      setTokensUsed((prev) => {
+        const next = prev + estimatedQueryTokens;
+        localStorage.setItem('lumina_tokens_used', String(next));
+        return next;
+      });
+    }
   };
 
   const handleSelectConversation = async (conv: Conversation) => {
     setActiveConversation(conv);
+    loadSessionUsage(conv.session_id || conv.id);
     try {
       const history = await getSessionHistory(conv.id);
       if (history && history.length > 0) {
@@ -322,6 +360,7 @@ export default function Home() {
       setConversations((prev) => [newConv, ...prev]);
       setActiveConversation(newConv);
       setMessages([]);
+      loadSessionUsage(newConv.session_id || newConv.id);
     } catch {
       setMessages([]);
       setActiveConversation(null);
