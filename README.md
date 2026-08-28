@@ -95,7 +95,7 @@ sequenceDiagram
 
   U->>W: Ask a question / attach a file or image
   W->>A: POST /api/chat + X-Session-ID
-  A->>A: Validate/issue session; apply rate limit & safety checks
+  A->>A: Validate/issue session apply rate limit & safety checks
   A->>G: Route intent and select an optional skill
   alt Tool route
     G->>G: Execute web, image, or MCP tool skill
