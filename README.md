@@ -18,6 +18,10 @@
   </p>
 </div>
 
+<div align="center">
+  <img src="assets/Lumina.png" alt="Lumina — multimodal corrective RAG architecture overview" width="820" />
+</div>
+
 > **The short version:** upload documents in virtually any business format, ask a question, and Lumina retrieves, verifies, rewrites when evidence is weak, then streams a grounded answer with sources and an inspectable agent trace. It can also call external MCP tools, expose its own knowledge base over MCP, run focused reasoning skills, search the web, understand images, and process voice.
 
 ## Contents
@@ -42,6 +46,15 @@
 
 The workspace combines the document library, session history, adaptive skills, and MCP connections in one research surface.
 
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="46%"><img src="assets/concept-sketch.png" alt="Original notebook plan for Lumina" width="100%" /><br/><sub><strong>Where it started</strong> — the original notebook plan</sub></td>
+      <td align="center" width="54%"><img src="assets/system-architecture.png" alt="Lumina system architecture diagram" width="100%" /><br/><sub><strong>Where it landed</strong> — the full system architecture</sub></td>
+    </tr>
+  </table>
+</div>
+
 ## What Lumina does
 
 | For a team that needs… | Lumina provides… |
@@ -56,61 +69,9 @@ The workspace combines the document library, session history, adaptive skills, a
 
 ## Architecture
 
-```mermaid
-flowchart TB
-  classDef client fill:#eff6ff,stroke:#2563eb,color:#172554,stroke-width:2px
-  classDef api fill:#f5f3ff,stroke:#7c3aed,color:#2e1065,stroke-width:2px
-  classDef intelligence fill:#ecfeff,stroke:#0891b2,color:#164e63,stroke-width:2px
-  classDef data fill:#f0fdf4,stroke:#16a34a,color:#14532d,stroke-width:2px
-  classDef external fill:#fff7ed,stroke:#ea580c,color:#7c2d12,stroke-width:2px
-
-  User([Analyst / agent]) --> UI
-  UI["Next.js research workspace<br/>chat • uploads • sources • thinking trace<br/>MCP hub • skills hub • theme"]:::client
-  UI <-->|"REST + SSE<br/>X-Session-ID"| API
-
-  API["FastAPI application<br/>chat • ingest • documents • sessions<br/>voice • conversations • MCP • skills"]:::api
-  API --> Guard["Session isolation<br/>UUIDv4 scope + rate limits"]:::api
-  Guard --> Router
-
-  subgraph Intelligence["Corrective intelligence plane"]
-    Router["Router agent<br/>intent, filters, modality, skill route"]:::intelligence
-    Skills["Skill executor<br/>web search • image generation • MCP tool<br/>dynamic Markdown skills"]:::intelligence
-    Retrieve["Retriever agent<br/>dense + BM25 + RRF<br/>parent resolution"]:::intelligence
-    Grade["Grader agent<br/>batch relevance evaluation"]:::intelligence
-    Rewrite["Rewriter agent<br/>HyDE • step-back • decomposition"]:::intelligence
-    Generate["Generator agent<br/>streamed grounded answer + citations"]:::intelligence
-    Router -->|tool route| Skills --> Generate
-    Router -->|knowledge route| Retrieve --> Grade
-    Grade -->|evidence sufficient| Generate
-    Grade -->|evidence weak; retry bounded| Rewrite --> Retrieve
-  end
-
-  API --> Ingest
-  subgraph Knowledge["Multimodal knowledge plane"]
-    Ingest["Adaptive ingestion<br/>detect → parse → chunk → embed"]:::data
-    Parse["PDF • DOCX • PPTX • CSV/TSV/JSON<br/>text/code • image • audio • video"]:::data
-    Chunks["Adaptive chunking<br/>section / semantic / parent-child<br/>contextual headers"]:::data
-    Embed["FastEmbed local vectors<br/>dense BGE + sparse BM25"]:::data
-    Store[("Qdrant vectors<br/>session-aware payloads")]:::data
-    Meta[("Supabase metadata & history<br/>or local JSON fallback")]:::data
-    Ingest --> Parse --> Chunks --> Embed --> Store
-    Ingest --> Meta
-  end
-  Retrieve <--> Store
-  API <--> Meta
-
-  subgraph Integrations["Providers & interoperability"]
-    Models["Provider registry<br/>Gemini • Groq • NVIDIA"]:::external
-    Tavily["Tavily web research"]:::external
-    RemoteMCP["Remote MCP servers<br/>discover + invoke tools"]:::external
-    MCPServer["Lumina MCP server<br/>query_knowledge_base<br/>list_documents"]:::external
-  end
-  Generate <--> Models
-  Skills <--> Tavily
-  Skills <--> RemoteMCP
-  API <--> MCPServer
-  MCPClient["Cursor • Claude Desktop<br/>Windsurf • compatible clients"]:::client <--> MCPServer
-```
+<div align="center">
+  <img src="assets/system-architecture.png" alt="Lumina system architecture — client layer, backend API, intelligence plane, data and storage layer, bidirectional MCP integration, and background workers" width="900" />
+</div>
 
 ### Design principles
 
