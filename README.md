@@ -124,35 +124,33 @@ flowchart TB
 
 ```mermaid
 sequenceDiagram
-  participant User
-  participant Workspace as Lumina workspace
-  participant API as FastAPI API
-  participant Graph as CRAG graph
-  participant Store as Qdrant
-  participant Model as model provider
+  autonumber
+  participant U as User
+  participant W as Web app
+  participant A as API + middleware
+  participant G as CRAG graph
+  participant V as Qdrant
+  participant L as LLM provider
 
-  User->>Workspace: Ask a question or attach a file
-  Workspace->>API: POST /api/chat with session header
-  API->>Graph: Apply safety checks and route request
-  alt Tool request
-    Graph->>Graph: Run web, image, or MCP skill
-  else Knowledge request
-    Graph->>Store: Run hybrid dense and sparse retrieval
-    Store-->>Graph: Return reranked child and parent context
-    Graph->>Model: Grade retrieved evidence
-    alt Evidence needs correction
-      Model-->>Graph: Context is insufficient
-      Graph->>Model: Rewrite the query
-      Graph->>Store: Retry retrieval within configured limit
-      Store-->>Graph: Return updated context
-    else Evidence is sufficient
-      Model-->>Graph: Context is sufficient
+  U->>W: Ask a question / attach a file or image
+  W->>A: POST /api/chat + X-Session-ID
+  A->>A: Validate/issue session; apply rate limit & safety checks
+  A->>G: Route intent and select an optional skill
+  alt Tool route
+    G->>G: Execute web, image, or MCP tool skill
+  else Knowledge route
+    G->>V: Hybrid dense + BM25 search, RRF fusion, reranking
+    V-->>G: Child chunks + resolved parent context
+    G->>L: Batch-grade relevance
+    alt Context insufficient and retries remain
+      G->>L: Rewrite query / create retrieval strategy
+      G->>V: Retry retrieval
     end
   end
-  Graph->>Model: Generate a grounded response
-  Model-->>API: Stream answer tokens and citations
-  API-->>Workspace: Send SSE status, text, sources, and usage
-  Workspace-->>User: Render answer, trace, and source cards
+  G->>L: Generate grounded streamed response
+  L-->>A: Tokens, citations, trace metrics
+  A-->>W: SSE events: status, thinking, text, sources, usage, DONE
+  W-->>U: Answer, sources, and inspectable reasoning timeline
 ```
 
 ## Key capabilities
@@ -217,7 +215,7 @@ sequenceDiagram
 - Python **3.11+** (the deployment configuration uses Python 3.12).
 - Node.js **18.17+** (Node 20 is used for deployment).
 - A Qdrant instance: local Docker or Qdrant Cloud.
-- At least one generation provider key for a fully functional chat experience. The runtime selects the provider through `PRIMARY_PROVIDER` (NVIDIA by default).
+- At least one generation provider key for a fully functional chat experience. Gemini is the default documented path.
 
 ### 1. Clone and configure the backend
 
@@ -237,8 +235,6 @@ cp env.example .env
 Set the minimum useful values in `backend/.env`:
 
 ```dotenv
-# Use Gemini for local development, or choose nvidia/groq when configured.
-PRIMARY_PROVIDER=gemini
 GEMINI_API_KEY=your_key
 QDRANT_URL=http://localhost:6333
 QDRANT_COLLECTION=multimodal_rag
@@ -272,25 +268,22 @@ Open [http://localhost:3000](http://localhost:3000). Set `NEXT_PUBLIC_API_URL` i
 
 Copy `backend/env.example` to `backend/.env`. The complete template includes provider, retrieval, session, and persistence settings; the most important values are below.
 
-| Variable | Required | Runtime default / example | Why it matters |
+| Variable | Required | Default / example | Why it matters |
 | --- | :---: | --- | --- |
-| `PRIMARY_PROVIDER` | No | `nvidia` | Default provider used by the runtime registry. |
-| `GEMINI_API_KEY` | For Gemini | — | Enables Gemini generation and vision paths. |
+| `GEMINI_API_KEY` | For Gemini | — | Primary generation and vision provider credential. |
 | `GROQ_API_KEY` | No | — | Enables Groq provider and Whisper-oriented audio processing. |
-| `NVIDIA_API_KEY` | For NVIDIA | — | Enables the default NVIDIA provider, image generation, speech, and transcription paths. |
+| `NVIDIA_API_KEY` | No | — | Enables NVIDIA provider, image generation, speech, and transcription paths. |
 | `QDRANT_URL` | Yes for persistent retrieval | `http://localhost:6333` | Qdrant local or cloud endpoint. |
 | `QDRANT_API_KEY` | Cloud only | empty | Qdrant Cloud credential. |
 | `QDRANT_COLLECTION` | No | `multimodal_rag` | Vector collection name. |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | No | empty | Enables cloud metadata, history, and usage persistence; otherwise Lumina degrades gracefully. |
 | `TAVILY_API_KEY` | No | empty | Enables the live web-search skill. |
-| `EMBEDDING_MODEL` / `EMBEDDING_DIM` | No | `BAAI/bge-small-en-v1.5` / `384` | Local dense embedding configuration. |
-| `RERANK_MODEL` / `ENABLE_FLASHRANK` | No | MiniLM / `false` | Cross-encoder reranker configuration and feature flag. |
+| `EMBEDDING_MODEL` / `EMBEDDING_DIM` | No | BGE model / `1024` | Local dense embedding configuration. |
+| `RERANK_MODEL` | No | MiniLM model | Cross-encoder reranker configuration. |
 | `TOP_K_RETRIEVE` / `TOP_K_RERANK` | No | `20` / `5` | Retrieval depth and final context count. |
-| `MAX_RETRIEVAL_RETRIES` | No | `2` | Maximum corrective RAG cycles. |
+| `MAX_RETRIEVAL_RETRIES` | No | `3` | Maximum corrective RAG cycles. |
 | `RELEVANCE_THRESHOLD` | No | `0.5` | Relevance cutoff used by the grader. |
-| `SESSION_HEADER` / `SESSION_AUTO_ISSUE` | No | `X-Session-ID` / `true` | Controls session identification and automatic UUID issuance. |
-| `LANGSMITH_API_KEY` / `LANGSMITH_PROJECT` | No | empty / `lumina-rag` | Optional LangSmith tracing configuration. |
-| `CORS_ORIGINS` | No | `*` | Browser-origin access control. |
+| `CORS_ORIGINS` | No | `http://localhost:3000` | Browser-origin access control. |
 
 ## API and streaming contract
 
@@ -306,20 +299,15 @@ Copy `backend/env.example` to `backend/.env`. The complete template includes pro
 | `POST` / `GET` | `/api/sessions` / `/api/sessions/{session_id}/history` | Create a session and retrieve its history. |
 | `POST` / `DELETE` | `/api/sessions/{session_id}/cleanup` / `/api/sessions/{session_id}` | Clear or delete session history. |
 | `GET` | `/api/sessions/{session_id}/usage` | Get session usage. |
-| `GET` / `POST` | `/api/conversations` | List or create session-scoped conversations. |
-| `GET` / `PATCH` | `/api/conversations/{conversation_id}` | Retrieve or update a conversation. |
-| `POST` | `/api/mcp/test` | Test an MCP endpoint without registering it. |
-| `POST` / `GET` / `DELETE` | `/api/mcp/connections` and `/api/mcp/connections/{connection_id}` | Register, list, and remove remote MCP connections. |
-| `GET` | `/api/mcp/connections/{connection_id}/tools` | Rediscover a registered server's tools. |
-| `GET` | `/api/skills` or `/api/skills/categories` | List skills or available categories. |
-| `POST` / `DELETE` | `/api/skills/custom` and `/api/skills/custom/{skill_name}` | Create or delete a session-scoped Markdown skill. |
-| `GET` / `POST` | `/api/skills/{skill_name}` and `/api/skills/{skill_name}/execute` | Inspect or directly execute a skill. |
+| `GET` / `POST` / `PATCH` | `/api/conversations` and `/api/conversations/{id}` | Conversation management. |
+| `POST` / `GET` / `DELETE` | `/api/mcp/connections` | Register, list, and remove remote MCP connections. |
+| `GET` / `POST` | `/api/skills` and `/api/skills/{skill_name}/execute` | Inspect and execute skills. |
 | `POST` | `/api/voice/transcribe` | Transcribe uploaded audio. |
 | `POST` | `/api/voice/synthesize` | Synthesize text to WAV audio. |
 
 ### What comes back over SSE
 
-`POST /api/chat` streams events such as `agent_status`, `thinking`, `retrieval_info`, `text`, `sources`, `web_results`, `tool_result`, `image_result`, `usage_info`, and the terminal `[DONE]` marker. The frontend maps those events to the thinking trace, streamed message, citation list, and tool/image result cards.
+`POST /api/chat` streams events such as `agent_status`, `thinking`, `retrieval_info`, `text`, `sources`, `web_results`, `tool_result`, `image_result`, `usage`, and the terminal `[DONE]` marker. The frontend maps those events to the thinking trace, streamed message, citation list, and tool/image result cards.
 
 ```text
 event: message
