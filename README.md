@@ -95,9 +95,29 @@ Experience Lumina live — no setup required:
 
 ---
 
-## 🎬 Product Tour
+## 🎬 Product Tour & Demo Video
 
-### The Workspace
+Experience Lumina in action across live document intelligence, adaptive skills, and agent reasoning workflows:
+
+### Part 1: Workspace, Cognitive Skills Hub & MCP Integration
+> **Walkthrough:** Clean light-mode workspace, document library & live activity dashboard, the 13 built-in Cognitive Skills catalog, Model Context Protocol (MCP) Hub, and live archive retrieval streaming.
+
+<div align="center">
+  <img src="assets/lumina-demo-part1.webp" alt="Lumina Demo Part 1 — Workspace, Cognitive Skills Hub, and MCP Hub" width="100%" />
+</div>
+
+<br />
+
+### Part 2: Live Web Research, Model Selection & Agent Reasoning Trace
+> **Walkthrough:** Model selector dropdown, live web search with Tavily tool execution, full response citation exploration, inspectable multi-agent Thinking Area / reasoning timeline, and session-isolated querying.
+
+<div align="center">
+  <img src="assets/lumina-demo-part2.webp" alt="Lumina Demo Part 2 — Live Web Research, Model Selection, and Thinking Trace" width="100%" />
+</div>
+
+<br />
+
+### The Workspace Highlights
 
 Lumina provides a complete research workspace — not just a chat box:
 
