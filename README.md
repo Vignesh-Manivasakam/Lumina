@@ -1,50 +1,62 @@
 <div align="center">
+
+  <img src="assets/Lumina.png" alt="Lumina — Enterprise Document Intelligence" width="280" />
+
   <h1>Lumina</h1>
-  <p><strong>Enterprise multimodal intelligence with corrective RAG, adaptive skills, and bidirectional MCP.</strong></p>
+  <p><strong>Enterprise-grade multimodal document intelligence powered by Corrective RAG, Adaptive Cognitive Skills, and Bidirectional MCP.</strong></p>
 
   <p>
-    <a href="#quick-start"><img src="https://img.shields.io/badge/launch-local%20first-2864DC?style=for-the-badge&logo=rocket&logoColor=white" alt="Local-first" /></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-111827?style=for-the-badge" alt="MIT license" /></a>
-    <a href="#architecture"><img src="https://img.shields.io/badge/architecture-CRAG%20%2B%20MCP-7C3AED?style=for-the-badge&logo=diagram&logoColor=white" alt="CRAG and MCP architecture" /></a>
+    <a href="#-quick-start"><img src="https://img.shields.io/badge/🚀_Quick_Start-Get_Running-2864DC?style=for-the-badge" alt="Quick Start" /></a>
+    <a href="https://lumina-frontend-ma7n.onrender.com"><img src="https://img.shields.io/badge/🌐_Live_Demo-Try_Now-10B981?style=for-the-badge" alt="Live Demo" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/📄_License-MIT-111827?style=for-the-badge" alt="MIT License" /></a>
   </p>
 
   <p>
-    <img src="https://img.shields.io/badge/Next.js-14-111827?logo=next.js" alt="Next.js 14" />
-    <img src="https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
-    <img src="https://img.shields.io/badge/LangGraph-corrective%20flow-F97316" alt="LangGraph" />
-    <img src="https://img.shields.io/badge/Qdrant-hybrid%20retrieval-DC244C?logo=qdrant&logoColor=white" alt="Qdrant" />
-    <img src="https://img.shields.io/badge/MCP-bidirectional-8B5CF6" alt="Model Context Protocol" />
-    <img src="https://img.shields.io/badge/Tests-pytest%20%2B%20Node-16A34A?logo=pytest&logoColor=white" alt="Automated tests" />
+    <img src="https://img.shields.io/badge/Next.js-14-111827?logo=next.js&logoColor=white" alt="Next.js 14" />
+    <img src="https://img.shields.io/badge/FastAPI-Async-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
+    <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" alt="Python 3.12" />
+    <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/LangGraph-CRAG_Flow-F97316" alt="LangGraph" />
+    <img src="https://img.shields.io/badge/Qdrant-Hybrid_Retrieval-DC244C?logo=qdrant&logoColor=white" alt="Qdrant" />
+    <img src="https://img.shields.io/badge/MCP-Bidirectional-8B5CF6" alt="Model Context Protocol" />
+    <img src="https://img.shields.io/badge/Tests-298_Passing-16A34A?logo=pytest&logoColor=white" alt="298 Tests Passing" />
   </p>
+
+  <br />
+
+  <p><em>Upload any document. Ask any question. Get grounded, source-cited answers with full agent transparency.</em></p>
+
 </div>
 
-<div align="center">
-  <img src="assets/Lumina.png" alt="Lumina — multimodal corrective RAG architecture overview" width="820" />
-</div>
+---
 
-> **The short version:** upload documents in virtually any business format, ask a question, and Lumina retrieves, verifies, rewrites when evidence is weak, then streams a grounded answer with sources and an inspectable agent trace. It can also call external MCP tools, expose its own knowledge base over MCP, run focused reasoning skills, search the web, understand images, and process voice.
+## 📋 Table of Contents
 
-## Contents
+- [What is Lumina?](#-what-is-lumina)
+- [Live Demo](#-live-demo)
+- [Product Tour](#-product-tour)
+- [Core Architecture](#-core-architecture)
+- [Key Features](#-key-features)
+- [Cognitive Skills System](#-cognitive-skills-system)
+- [MCP Integration](#-mcp-integration)
+- [Supported File Formats](#-supported-file-formats)
+- [Tech Stack](#-tech-stack)
+- [Quick Start](#-quick-start)
+- [Configuration Reference](#-configuration-reference)
+- [API Reference](#-api-reference)
+- [Project Structure](#-project-structure)
+- [Testing](#-testing)
+- [Deployment](#-deployment)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-- [Product tour](#product-tour)
-- [What Lumina does](#what-lumina-does)
-- [Architecture](#architecture)
-- [Request lifecycle](#request-lifecycle)
-- [Key capabilities](#key-capabilities)
-- [Supported inputs and outputs](#supported-inputs-and-outputs)
-- [Quick start](#quick-start)
-- [Configuration](#configuration)
-- [API and streaming contract](#api-and-streaming-contract)
-- [MCP integration](#mcp-integration)
-- [Project map](#project-map)
-- [Testing](#testing)
-- [Deployment](#deployment)
+---
 
-## Product tour
+## 🧠 What is Lumina?
 
-> **Tour outline:** upload or select a document, ask a question in the multimodal composer, inspect citations and the agent trace, then open the Skills Hub or MCP Hub to extend the workflow.
+**Lumina** is a full-stack multimodal document intelligence platform that combines **Corrective Retrieval-Augmented Generation (CRAG)**, **13 adaptive cognitive skills**, and **bidirectional Model Context Protocol (MCP)** to deliver enterprise-grade question answering over private knowledge bases.
 
-The workspace combines the document library, session history, adaptive skills, and MCP connections in one research surface.
+Unlike conventional RAG chatbots that retrieve once and hope for the best, Lumina's **five-agent corrective graph** actively verifies retrieval quality, rewrites queries when evidence is insufficient, and retries — ensuring answers are **grounded in actual evidence**, not hallucinated.
 
 <div align="center">
   <table>
@@ -55,244 +67,215 @@ The workspace combines the document library, session history, adaptive skills, a
   </table>
 </div>
 
-## What Lumina does
+### Why Lumina?
 
-| For a team that needs… | Lumina provides… |
+| Challenge | How Lumina Solves It |
 | --- | --- |
-| **Answers from private knowledge** | Hybrid dense + sparse retrieval, FlashRank reranking, and source cards that link the answer back to retrieved passages. |
-| **Reliable retrieval when the first search is not enough** | A corrective RAG loop that grades evidence, rewrites the query with HyDE / step-back / decomposition techniques, and retries within a configured limit. |
-| **One workspace for messy inputs** | Parsing and ingestion for documents, spreadsheets, presentations, images, audio, and video. |
-| **A transparent agent experience** | Streaming answer tokens alongside agent status, reasoning notes, retrieval metrics, sources, tool results, and usage events over SSE. |
-| **Specialist workflows without hard-coding prompts** | Markdown-defined skills with metadata, trigger routing, session-scoped custom skills, and a three-tier skill router. |
-| **Interoperability with the agent ecosystem** | Lumina both **serves** knowledge-base tools to MCP clients and **consumes** tools discovered from remote MCP servers. |
-| **Sane local development** | CPU-friendly embedding/reranking, Qdrant local or cloud, and graceful local JSON fallbacks when Supabase is not configured. |
+| **"The AI just made up that answer"** | Corrective RAG grades evidence and rewrites queries when retrieval is weak — answers are always source-grounded |
+| **"I can't see how it reached that conclusion"** | Full agent trace transparency: see which agents ran, what they thought, and how they scored evidence |
+| **"It only works with text"** | Multimodal ingestion: PDFs, Word, PowerPoint, CSV, images, audio, video — all in one pipeline |
+| **"I need specialized analysis"** | 13 built-in cognitive skills for contract review, financial analysis, causal reasoning, code architecture, and more |
+| **"It doesn't connect to my tools"** | Bidirectional MCP: Lumina consumes external tools AND exposes its knowledge base as an MCP server for IDEs |
+| **"Setting it up requires a PhD"** | Local-first design: CPU-friendly embeddings, optional cloud services, runs on a laptop |
 
-## Architecture
+---
+
+## 🌐 Live Demo
+
+Experience Lumina live — no setup required:
+
+| Service | URL | Status |
+| --- | --- | --- |
+| **Frontend** | [lumina-frontend-ma7n.onrender.com](https://lumina-frontend-ma7n.onrender.com) | ![Frontend Status](https://img.shields.io/badge/status-live-10B981) |
+| **Backend API** | [lumina-f779.onrender.com](https://lumina-f779.onrender.com/health) | ![Backend Status](https://img.shields.io/badge/status-live-10B981) |
+| **API Docs** | [lumina-f779.onrender.com/docs](https://lumina-f779.onrender.com/docs) | ![Docs Status](https://img.shields.io/badge/status-live-10B981) |
+| **MCP Endpoint** | [lumina-f779.onrender.com/mcp](https://lumina-f779.onrender.com/mcp) | ![MCP Status](https://img.shields.io/badge/status-live-10B981) |
+
+> 💡 **Note:** The live demo runs on Render free tier. The first request may take 30–60 seconds while the service wakes up.
+
+---
+
+## 🎬 Product Tour
+
+### The Workspace
+
+Lumina provides a complete research workspace — not just a chat box:
+
+- **📚 Document Library** — Upload and manage your knowledge base with real-time ingestion status
+- **💬 Conversation History** — Persistent sessions with full message history and context
+- **🧠 Cognitive Skills Hub** — 13 pre-built specialist skills + custom skill creation
+- **🔌 MCP Hub** — Connect external AI tools and services
+- **🎨 Dark/Light Mode** — Adaptive theme with system preference detection
+- **📊 Activity Dashboard** — Real-time session metrics: documents indexed, queries run, tokens consumed
+
+### Chat Experience
+
+- **Streaming responses** with real-time token generation
+- **Source citation cards** linking answers back to specific document passages and pages
+- **Agent trace timeline** showing the complete reasoning pipeline
+- **Thinking area** with Timeline, Agent Matrix, and Raw Log view modes
+- **Web search integration** with inline result cards
+- **Image generation** with prompt refinement
+- **File & image attachments** for multimodal queries
+- **Model selection** (Gemini Flash, Flash Lite, and more)
+
+---
+
+## 🏗 Core Architecture
 
 <div align="center">
-  <img src="assets/system-architecture.png" alt="Lumina system architecture — client layer, backend API, intelligence plane, data and storage layer, bidirectional MCP integration, and background workers" width="900" />
+  <img src="assets/system-architecture.png" alt="Lumina System Architecture" width="900" />
 </div>
 
-### Design principles
+### Design Principles
 
-1. **Correct before fluent.** The graph grades retrieval results before synthesis and can rewrite/retrieve again when the evidence set is insufficient.
-2. **Local-first by default.** Embeddings and reranking run on CPU; Qdrant can be local; Supabase is optional rather than a prerequisite for a usable workspace.
-3. **Observability is part of the product.** The UI consumes structured agent and thinking events instead of presenting a black-box answer.
-4. **Interoperability runs both ways.** Lumina can be an MCP server for IDE clients and an MCP client for external capabilities.
-5. **Privacy is enforced at the request boundary.** A UUIDv4 session header scopes application requests; vector payloads and persisted conversations retain their session association.
+1. **Correct before fluent** — The graph grades retrieval quality before synthesis and can rewrite/retrieve again when evidence is insufficient
+2. **Local-first by default** — Embeddings and reranking run on CPU; Qdrant can be local; Supabase is optional
+3. **Observability is part of the product** — The UI consumes structured agent and thinking events, not a black-box answer
+4. **Interoperability runs both ways** — Lumina is both an MCP server for IDE clients and an MCP client for external tools
+5. **Privacy at the request boundary** — UUIDv4 session headers scope all requests; vector payloads retain session association
 
-## Request lifecycle
+### Request Lifecycle
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant U as User
-  participant W as Web app
-  participant A as API + middleware
-  participant G as CRAG graph
-  participant V as Qdrant
-  participant L as LLM provider
+  participant U as 👤 User
+  participant W as 🌐 Web App
+  participant A as ⚡ API + Middleware
+  participant G as 🔄 CRAG Graph
+  participant V as 📦 Qdrant
+  participant L as 🤖 LLM Provider
 
-  U->>W: Ask a question / attach a file or image
+  U->>W: Ask question / attach file or image
   W->>A: POST /api/chat + X-Session-ID
-  A->>A: Validate/issue session apply rate limit & safety checks
-  A->>G: Route intent and select an optional skill
-  alt Tool route
+  A->>A: Validate session, rate limit, safety check
+  A->>G: Route intent → select skill or knowledge path
+  alt 🔧 Tool Route
     G->>G: Execute web, image, or MCP tool skill
-  else Knowledge route
+  else 📚 Knowledge Route
     G->>V: Hybrid dense + BM25 search, RRF fusion, reranking
     V-->>G: Child chunks + resolved parent context
-    G->>L: Batch-grade relevance
-    alt Context insufficient and retries remain
-      G->>L: Rewrite query / create retrieval strategy
-      G->>V: Retry retrieval
+    G->>L: Batch-grade relevance (5-point scale)
+    alt ⚠️ Context insufficient & retries remain
+      G->>L: Rewrite query (HyDE / step-back / decomposition)
+      G->>V: Retry retrieval with refined query
     end
   end
-  G->>L: Generate grounded streamed response
+  G->>L: Generate grounded, streamed response
   L-->>A: Tokens, citations, trace metrics
   A-->>W: SSE events: status, thinking, text, sources, usage, DONE
-  W-->>U: Answer, sources, and inspectable reasoning timeline
+  W-->>U: Answer + sources + inspectable reasoning trace
 ```
 
-## Key capabilities
+### Five-Agent CRAG Pipeline
 
-### 1) Multimodal ingestion that preserves useful structure
+```
+┌─────────┐    ┌──────────┐    ┌────────┐    ┌──────────┐    ┌───────────┐
+│  Router  │───▶│ Retriever │───▶│ Grader │───▶│ Rewriter │───▶│ Generator │
+│          │    │           │    │        │    │          │    │           │
+│ • Intent │    │ • Dense   │    │ • 5pt  │    │ • HyDE   │    │ • Source  │
+│   detect │    │ • BM25    │    │   scale│    │ • Step-  │    │   grounded│
+│ • Skill  │    │ • RRF     │    │ • Batch│    │   back   │    │ • Stream  │
+│   route  │    │ • Rerank  │    │   grade│    │ • Decomp │    │   SSE     │
+└─────────┘    └──────────┘    └────────┘    └──────────┘    └───────────┘
+                                    │                │
+                                    └─── retry loop ─┘
+                                   (up to MAX_RETRIEVAL_RETRIES)
+```
 
-- **Adaptive format routing:** PDFs, Word, PowerPoint, CSV/TSV/JSON, plain text/code, images, audio, and video enter a single ingestion pipeline.
-- **Document-aware chunking:** the orchestrator can select section, semantic, or parent-child strategies; parent context preserves coherence while smaller child chunks improve search precision.
-- **Contextual headers:** chunks can receive document-level framing before embedding, improving retrieval for snippets that otherwise lack context.
-- **Visual and spoken content:** image extraction supports visual content; audio is transcribed through the configured provider, while the video path extracts frame-level visual context.
+---
 
-### 2) Corrective hybrid RAG
+## ✨ Key Features
 
-- **Hybrid retrieval:** local dense BGE embeddings and BM25 sparse vectors are fused with reciprocal-rank fusion (RRF), then reranked by a CPU-friendly FlashRank cross-encoder.
-- **Five-agent graph:** Router → Retriever → Grader → Rewriter → Generator, with a skill-executor node for tools.
-- **Bounded correction:** the grader declares whether context is sufficient. If it is not, the rewriter selects query expansion techniques and the graph retries up to `MAX_RETRIEVAL_RETRIES`.
-- **Grounded generation:** source passages are assembled for the generator and exposed as source cards in the application.
+### 1. 📄 Multimodal Document Ingestion
 
-### 3) Adaptive skills and tools
+- **Adaptive format routing** — PDFs, Word, PowerPoint, CSV/TSV/JSON, plain text, code, images, audio, and video enter a single unified pipeline
+- **Intelligent chunking strategies** — Section-aware, semantic, and parent-child chunking modes automatically selected by the document analyzer
+- **Contextual headers** — Document-level framing added to chunks before embedding for improved retrieval coherence
+- **Visual content extraction** — Image analysis for diagrams, charts, and visual elements
+- **Audio/Video processing** — Transcription and frame-level context extraction
 
-| Skill path | Purpose |
-| --- | --- |
-| **Three-tier router** | Uses exact trigger matching first, then micro-LLM intent expansion with dense/sparse skill matching, then a Sonnet → Opus → Fable reasoning fallback. |
-| **Markdown skill registry** | Loads built-in and session-scoped skills from Markdown front matter; lists, creates, reads, executes, and deletes custom session skills through the API. |
-| **Domain skills** | Includes contract risk analysis, causal/root-cause reasoning, executive briefings, financial analysis, structured extraction, code architecture review, and creative prompt design. |
-| **Web research** | Tavily-backed live web results are converted into cited tool context when configured. |
-| **Image generation** | Refines image prompts and uses NVIDIA NIM SDXL with a high-reliability fallback path. |
-| **External MCP tools** | Registers, probes, discovers, and invokes remote MCP tools subject to URL safety checks. |
+### 2. 🔄 Corrective Hybrid RAG
 
-### 4) Enterprise controls and persistence
+- **Hybrid retrieval** — Dense BGE embeddings + BM25 sparse vectors fused with Reciprocal Rank Fusion (RRF), then reranked by CPU-friendly FlashRank cross-encoder
+- **Five-agent graph** — Router → Retriever → Grader → Rewriter → Generator, with skill-executor node for tools
+- **Bounded correction** — The grader evaluates evidence sufficiency; if insufficient, the rewriter applies query expansion techniques and the graph retries (configurable `MAX_RETRIEVAL_RETRIES`)
+- **Grounded generation** — Source passages assembled for the generator and exposed as interactive citation cards
 
-- **Session isolation:** the API validates an `X-Session-ID` UUIDv4 (or issues one), returns it on responses, and scopes history and usage endpoints to it.
-- **Rate limiting:** sliding-window limits apply per session or client IP.
-- **Safety guard:** chat processing checks unsafe content before graph execution.
-- **Dual persistence:** Supabase stores metadata, conversations, and usage when credentials exist; local JSON registries preserve a zero-dependency fallback.
-- **Provider resilience:** a registry routes tasks across Gemini, Groq, and NVIDIA-compatible providers.
+### 3. 🧠 Adaptive Cognitive Skills (13 Built-in)
 
-### 5) A research workspace, not a blank chat box
+See [Cognitive Skills System](#-cognitive-skills-system) for the full catalog.
 
-- Responsive Next.js workspace with document library, conversations, model selection, image/file attachment, dark mode, and error states.
-- **Thinking Area** with timeline, agent matrix, and raw-log modes.
-- Rich Markdown, code, tables, citations, web results, tool result cards, image result cards, and streaming message UI.
-- Voice transcription and synthesis endpoints are available for audio workflows.
+### 4. 🔌 Bidirectional MCP
 
-## Supported inputs and outputs
+See [MCP Integration](#-mcp-integration) for setup instructions.
 
-| Input | Processing path | Result |
+### 5. 🔒 Enterprise Controls
+
+- **Session isolation** — `X-Session-ID` UUIDv4 scopes all data access
+- **Rate limiting** — Sliding-window limits per session/IP
+- **Content safety** — Pre-processing safety guard before graph execution
+- **Dual persistence** — Supabase for cloud; local JSON fallback for zero-dependency operation
+- **Provider resilience** — Multi-provider registry across Gemini, Groq, and NVIDIA
+
+### 6. 🎛 Research Workspace UI
+
+- Responsive Next.js 14 workspace with document library, conversations, and model selection
+- **Thinking Area** with Timeline, Agent Matrix, and Raw Log modes
+- Rich Markdown rendering, code blocks with syntax highlighting, tables, citations
+- Web result cards, tool result cards, image generation cards
+- Voice transcription and synthesis support
+- Dark/Light mode with system preference detection
+- Real-time activity metrics dashboard
+
+---
+
+## 🧠 Cognitive Skills System
+
+Lumina ships with **13 domain-specific cognitive skills** loaded from Markdown definitions with YAML frontmatter. The three-tier skill router selects the right skill automatically:
+
+1. **Exact trigger matching** (fastest)
+2. **Micro-LLM intent expansion** with dense/sparse matching
+3. **Reasoning depth fallback** (Sonnet → Opus → Fable)
+
+### Built-in Skills Catalog
+
+| Category | Skill | What It Does |
 | --- | --- | --- |
-| PDF | PyMuPDF / PDF extraction + hierarchy-aware chunks | Searchable passages, tables, and visual context |
-| DOCX / PPTX | `python-docx` / `python-pptx` | Headings, body text, notes, and tables become retrieval context |
-| CSV / TSV / JSON | Adaptive text parser | Tabular and structured data become searchable text |
-| TXT / Markdown / code | Native text parsing | Formatting-preserving chunks |
-| PNG / JPG / WebP | Image extraction + multimodal generation | Visual question answering and image-aware responses |
-| MP3 / WAV / M4A | Audio pipeline + optional transcription provider | Timestamped transcript-oriented retrieval |
-| MP4 / AVI / MOV | Video pipeline | Frame-level visual context for retrieval |
-| Query + optional image/file | CRAG graph or tool skill | Streaming answer, sources, trace, web/tool/image results |
+| **🔍 Analysis** | Causal Reasoning | Root-cause analysis, 5-whys, hypothesis testing over evidence |
+| **📊 Briefing** | Executive Briefing | C-suite ready summaries with key metrics and action items |
+| **💻 Coding** | Code Architect | Architecture review, pattern analysis, refactoring suggestions |
+| **🎨 Creative** | Prompt Architect | Structured prompt engineering and refinement |
+| **📋 Data** | Structured Extraction | Extract tables, entities, and structured data from unstructured text |
+| **💰 Financial** | Financial Auditor | Balance sheet analysis, ratio computation, anomaly detection |
+| **⚖️ Legal** | Contract Risk | Clause-level risk scoring, redline suggestions, playbook comparison |
+| **🧮 Reasoning** | Sonnet Reasoning | Balanced, practical reasoning for everyday analysis |
+| **🧮 Reasoning** | Opus Reasoning | Deep deliberation for complex, ambiguous, high-stakes problems |
+| **🧮 Reasoning** | Fable Reasoning | Frontier-depth reasoning for cross-domain, open-ended challenges |
+| **🌐 Web** | Web Research | Live web search with Tavily, cited results inline |
+| **🖼️ Image** | Image Generation | SDXL-powered image creation with prompt refinement |
+| **🔧 MCP Tools** | External Tool Execution | Invoke tools from connected MCP servers |
 
-## Quick start
+### Custom Skills
 
-### Prerequisites
+Users can **create their own skills** directly from the UI:
 
-- Python **3.11+** (the deployment configuration uses Python 3.12).
-- Node.js **18.17+** (Node 20 is used for deployment).
-- A Qdrant instance: local Docker or Qdrant Cloud.
-- At least one generation provider key for a fully functional chat experience. Gemini is the default documented path.
-
-### 1. Clone and configure the backend
-
-```bash
-git clone https://github.com/Vignesh-Manivasakam/Lumina.git
-cd Lumina/backend
-
-python -m venv .venv
-# macOS / Linux
-source .venv/bin/activate
-# Windows PowerShell: .\.venv\Scripts\Activate.ps1
-
-pip install -r requirements.txt
-cp env.example .env
+```
+Skills Hub → "Add Custom Skill" → Define name, description, triggers → Save
 ```
 
-Set the minimum useful values in `backend/.env`:
+Custom skills are session-scoped and fully integrated with the skill router.
 
-```dotenv
-GEMINI_API_KEY=your_key
-QDRANT_URL=http://localhost:6333
-QDRANT_COLLECTION=multimodal_rag
-```
+---
 
-For local Qdrant:
+## 🔌 MCP Integration
 
-```bash
-docker run -p 6333:6333 -p 6334:6334 -v qdrant_data:/qdrant/storage qdrant/qdrant:latest
-```
+### Lumina as MCP Server (for IDEs)
 
-Start the API:
+Connect Lumina's knowledge base to **Cursor, Windsurf, Claude Desktop**, or any MCP-compatible client:
 
-```bash
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-The API is available at `http://localhost:8000`; interactive OpenAPI docs are at `http://localhost:8000/docs`.
-
-### 2. Start the frontend
-
-```bash
-cd ../frontend
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000). Set `NEXT_PUBLIC_API_URL` if the API is not running at the frontend's expected API origin.
-
-## Configuration
-
-Copy `backend/env.example` to `backend/.env`. The complete template includes provider, retrieval, session, and persistence settings; the most important values are below.
-
-| Variable | Required | Default / example | Why it matters |
-| --- | :---: | --- | --- |
-| `GEMINI_API_KEY` | For Gemini | — | Primary generation and vision provider credential. |
-| `GROQ_API_KEY` | No | — | Enables Groq provider and Whisper-oriented audio processing. |
-| `NVIDIA_API_KEY` | No | — | Enables NVIDIA provider, image generation, speech, and transcription paths. |
-| `QDRANT_URL` | Yes for persistent retrieval | `http://localhost:6333` | Qdrant local or cloud endpoint. |
-| `QDRANT_API_KEY` | Cloud only | empty | Qdrant Cloud credential. |
-| `QDRANT_COLLECTION` | No | `multimodal_rag` | Vector collection name. |
-| `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | No | empty | Enables cloud metadata, history, and usage persistence; otherwise Lumina degrades gracefully. |
-| `TAVILY_API_KEY` | No | empty | Enables the live web-search skill. |
-| `EMBEDDING_MODEL` / `EMBEDDING_DIM` | No | BGE model / `1024` | Local dense embedding configuration. |
-| `RERANK_MODEL` | No | MiniLM model | Cross-encoder reranker configuration. |
-| `TOP_K_RETRIEVE` / `TOP_K_RERANK` | No | `20` / `5` | Retrieval depth and final context count. |
-| `MAX_RETRIEVAL_RETRIES` | No | `3` | Maximum corrective RAG cycles. |
-| `RELEVANCE_THRESHOLD` | No | `0.5` | Relevance cutoff used by the grader. |
-| `CORS_ORIGINS` | No | `http://localhost:3000` | Browser-origin access control. |
-
-## API and streaming contract
-
-### Core endpoints
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/health` | Liveness response. |
-| `POST` | `/api/chat` | Main chat entry point; streams structured SSE events. |
-| `POST` | `/api/ingest` | Upload a file for asynchronous ingestion. |
-| `GET` | `/api/ingest/{doc_id}/status` | Poll ingestion state. |
-| `GET` / `DELETE` | `/api/documents` / `/api/documents/{doc_id}` | List or purge indexed documents. |
-| `POST` / `GET` | `/api/sessions` / `/api/sessions/{session_id}/history` | Create a session and retrieve its history. |
-| `POST` / `DELETE` | `/api/sessions/{session_id}/cleanup` / `/api/sessions/{session_id}` | Clear or delete session history. |
-| `GET` | `/api/sessions/{session_id}/usage` | Get session usage. |
-| `GET` / `POST` / `PATCH` | `/api/conversations` and `/api/conversations/{id}` | Conversation management. |
-| `POST` / `GET` / `DELETE` | `/api/mcp/connections` | Register, list, and remove remote MCP connections. |
-| `GET` / `POST` | `/api/skills` and `/api/skills/{skill_name}/execute` | Inspect and execute skills. |
-| `POST` | `/api/voice/transcribe` | Transcribe uploaded audio. |
-| `POST` | `/api/voice/synthesize` | Synthesize text to WAV audio. |
-
-### What comes back over SSE
-
-`POST /api/chat` streams events such as `agent_status`, `thinking`, `retrieval_info`, `text`, `sources`, `web_results`, `tool_result`, `image_result`, `usage`, and the terminal `[DONE]` marker. The frontend maps those events to the thinking trace, streamed message, citation list, and tool/image result cards.
-
-```text
-event: message
-data: {"type":"agent_status","agent":"retriever","status":"active"}
-
-event: message
-data: {"type":"retrieval_info","info":{"retrieved_count":12,"reranked_count":5}}
-
-event: message
-data: {"type":"text","content":"Here is the grounded answer…"}
-
-event: message
-data: {"type":"sources","sources":[{"doc_title":"Policy.pdf","page":4,"score":0.94}]}
-
-event: message
-data: [DONE]
-```
-
-## MCP integration
-
-### Use Lumina from an MCP client
-
-Lumina exposes `query_knowledge_base` and `list_documents` through its MCP server. A Cursor/Windsurf HTTP configuration looks like:
-
+**HTTP (Cursor / Windsurf):**
 ```json
 {
   "mcpServers": {
@@ -303,8 +286,7 @@ Lumina exposes `query_knowledge_base` and `list_documents` through its MCP serve
 }
 ```
 
-For Claude Desktop's local stdio workflow:
-
+**stdio (Claude Desktop):**
 ```json
 {
   "mcpServers": {
@@ -317,66 +299,524 @@ For Claude Desktop's local stdio workflow:
 }
 ```
 
-### Bring external tools into Lumina
+**Exposed Tools:**
+- `query_knowledge_base` — Query Lumina's indexed documents
+- `list_documents` — List all indexed documents
 
-Open the **MCP Hub** from the application, register an SSE-capable MCP endpoint, test it, discover its tool schemas, and then let the graph invoke those tools through the MCP tool skill. The backend verifies URLs before connecting and persists registrations through its configured persistence layer.
+### Lumina as MCP Client (consuming external tools)
 
-## Project map
+From the **MCP Hub** in the UI:
+1. Register an SSE-capable MCP server endpoint
+2. Test the connection
+3. Discover available tool schemas
+4. The CRAG graph automatically routes queries to matched tools
 
-```text
-Lumina/
-├── assets/                         # README artwork and demo media
-├── backend/
-│   ├── app/
-│   │   ├── agents/                 # Router, retriever, grader, rewriter, generator
-│   │   ├── graph/                  # LangGraph corrective-RAG topology
-│   │   ├── ingestion/              # Parsers, adaptive chunking, embedding pipelines
-│   │   ├── retrieval/              # Qdrant hybrid search and CPU reranking
-│   │   ├── routers/                # Conversations, MCP, skills, and voice APIs
-│   │   ├── services/               # Providers, safety, observability, persistence
-│   │   ├── skills/                 # Built-in tools and Markdown skill system
-│   │   ├── middleware/             # Session isolation and rate limiting
-│   │   ├── main.py                 # FastAPI app, endpoints, and SSE orchestration
-│   │   └── mcp_server.py           # Lumina-as-MCP-server entry point
-│   ├── tests/                      # Unit, integration, security, and smoke tests
-│   └── env.example                 # Fully annotated environment template
-├── frontend/
-│   ├── app/                        # Next.js App Router page and global styles
-│   ├── components/                 # Workspace, chat, traces, citations, MCP, skills UI
-│   ├── lib/                        # API/SSE client and shared TypeScript types
-│   └── __tests__/                  # Frontend contract tests
-├── render.yaml                     # Render service definitions
-└── README.md
-```
+---
 
-## Testing
+## 📁 Supported File Formats
+
+| Format | Extensions | Processing Pipeline | Output |
+| --- | --- | --- | --- |
+| **PDF** | `.pdf` | PyMuPDF extraction + hierarchy-aware chunking | Searchable passages, tables, visual context |
+| **Word** | `.docx` | `python-docx` structured parsing | Headings, body text, tables as retrieval context |
+| **PowerPoint** | `.pptx` | `python-pptx` slide extraction | Slide content, notes, and tables |
+| **Spreadsheets** | `.csv`, `.tsv` | Adaptive tabular parser | Structured data as searchable text |
+| **JSON** | `.json` | Structured data flattening | Key-value pairs as retrieval context |
+| **Text/Code** | `.txt`, `.md`, `.py`, `.js`, etc. | Native text parsing | Formatting-preserving chunks |
+| **Images** | `.png`, `.jpg`, `.webp` | Multimodal vision analysis | Visual Q&A and image-aware responses |
+| **Audio** | `.mp3`, `.wav`, `.m4a` | Whisper transcription pipeline | Timestamped transcript retrieval |
+| **Video** | `.mp4`, `.avi`, `.mov` | Frame extraction + visual analysis | Frame-level context for retrieval |
+
+---
+
+## 🛠 Tech Stack
+
+### Backend
+
+| Layer | Technology | Purpose |
+| --- | --- | --- |
+| **Framework** | FastAPI (async) | High-performance API with OpenAPI docs |
+| **AI Orchestration** | LangGraph | Corrective RAG graph with five-agent pipeline |
+| **Vector Store** | Qdrant (local or cloud) | Hybrid dense + sparse retrieval with RRF |
+| **Embeddings** | BGE (BAAI/bge-small-en-v1.5) | CPU-friendly dense embeddings |
+| **Reranking** | FlashRank (MiniLM) | CPU cross-encoder reranking |
+| **LLM Providers** | Gemini, Groq, NVIDIA | Multi-provider with automatic failover |
+| **MCP** | FastMCP + httpx | Bidirectional Model Context Protocol |
+| **Persistence** | Supabase / Local JSON | Cloud-first with graceful local fallback |
+| **Safety** | Custom guard | Content safety pre-processing |
+| **Web Search** | Tavily API | Live web research with citations |
+
+### Frontend
+
+| Layer | Technology | Purpose |
+| --- | --- | --- |
+| **Framework** | Next.js 14 (App Router) | React with server components |
+| **Language** | TypeScript 5 | Type-safe development |
+| **Styling** | Tailwind CSS | Utility-first responsive design |
+| **Icons** | Lucide React | Beautiful, consistent iconography |
+| **Markdown** | react-markdown + remark/rehype | Rich content rendering with syntax highlighting |
+| **Streaming** | SSE (Server-Sent Events) | Real-time response streaming |
+
+### Infrastructure
+
+| Layer | Technology | Purpose |
+| --- | --- | --- |
+| **Hosting** | Render | Automated deployments from GitHub |
+| **Testing** | pytest (298 tests) + Jest | Comprehensive backend + frontend testing |
+| **CI/CD** | GitHub → Render auto-deploy | Push-to-deploy pipeline |
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Python 3.11+** (3.12 recommended)
+- **Node.js 18.17+** (20 recommended)
+- **Qdrant** — Local Docker or Qdrant Cloud
+- At least one LLM API key (Gemini recommended for quickest setup)
+
+### 1. Clone the Repository
 
 ```bash
-# Backend: from repository root
-cd backend
-python -m pytest tests -v
-
-# Frontend: from repository root
-cd frontend
-npm test
-npm run build
+git clone https://github.com/Vignesh-Manivasakam/Lumina.git
+cd Lumina
 ```
 
-The backend suite covers routing, CRAG graph behavior, retrieval and Qdrant weighting, grading, rewriting, ingestion/chunking, provider behavior, session isolation, rate limiting, MCP URL safety and client behavior, voice endpoints, skills, persistence fallback, and observability/usage flows. The frontend suite validates API-contract behavior.
+### 2. Backend Setup
 
-## Deployment
+```bash
+cd backend
 
-`render.yaml` defines two free-tier services:
+# Create virtual environment
+python -m venv .venv
 
-1. **FastAPI backend:** install `backend/requirements.txt`, start Uvicorn, and configure model/provider, Qdrant, Supabase, and web-search secrets in Render.
-2. **Next.js frontend:** install and build `frontend`, then set `NEXT_PUBLIC_API_URL` from the backend service host.
+# Activate (choose your OS)
+# macOS / Linux:
+source .venv/bin/activate
+# Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
 
-The same separation maps cleanly to other hosts: deploy the API as a Python web service, the frontend as a Node/Next.js service, provision Qdrant, and supply the environment variables listed above.
+# Install dependencies
+pip install -r requirements.txt
 
-## License
+# Configure environment
+cp env.example .env
+```
+
+**Minimum `.env` configuration:**
+
+```dotenv
+GEMINI_API_KEY=your_gemini_api_key
+QDRANT_URL=http://localhost:6333
+QDRANT_COLLECTION=multimodal_rag
+```
+
+**Start Qdrant (Docker):**
+
+```bash
+docker run -p 6333:6333 -p 6334:6334 \
+  -v qdrant_data:/qdrant/storage \
+  qdrant/qdrant:latest
+```
+
+**Start the Backend:**
+
+```bash
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+The API is live at `http://localhost:8000` with interactive docs at `http://localhost:8000/docs`.
+
+### 3. Frontend Setup
+
+```bash
+cd ../frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) and start using Lumina!
+
+> 💡 **Tip:** Set `NEXT_PUBLIC_API_URL` if the backend runs on a different host/port.
+
+---
+
+## ⚙️ Configuration Reference
+
+Copy `backend/env.example` to `backend/.env`. Here's the complete reference:
+
+### LLM Provider Keys
+
+| Variable | Required | Default | Description |
+| --- | :---: | --- | --- |
+| `GEMINI_API_KEY` | For Gemini | — | Google Gemini API key (primary provider) |
+| `GROQ_API_KEY` | No | — | Groq API key for high-speed inference |
+| `NVIDIA_API_KEY` | No | — | NVIDIA NIM API key for image gen, TTS, ASR |
+| `TAVILY_API_KEY` | No | — | Tavily API key for live web search |
+
+### Vector Store
+
+| Variable | Required | Default | Description |
+| --- | :---: | --- | --- |
+| `QDRANT_URL` | Yes | `http://localhost:6333` | Qdrant endpoint |
+| `QDRANT_API_KEY` | Cloud only | — | Qdrant Cloud credential |
+| `QDRANT_COLLECTION` | No | `multimodal_rag` | Collection name |
+
+### Retrieval Tuning
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Dense embedding model |
+| `EMBEDDING_DIM` | `384` | Embedding dimensions |
+| `RERANK_MODEL` | `ms-marco-MiniLM-L-12-v2` | Cross-encoder reranker |
+| `TOP_K_RETRIEVE` | `20` | Initial retrieval depth |
+| `TOP_K_RERANK` | `5` | Final reranked context count |
+| `MAX_RETRIEVAL_RETRIES` | `3` | Max corrective RAG cycles |
+| `RELEVANCE_THRESHOLD` | `0.5` | Grader relevance cutoff |
+
+### Persistence
+
+| Variable | Required | Default | Description |
+| --- | :---: | --- | --- |
+| `SUPABASE_URL` | No | — | Supabase project URL |
+| `SUPABASE_SERVICE_KEY` | No | — | Supabase service role key |
+
+> 💡 **Note:** Without Supabase, Lumina falls back to local JSON persistence automatically.
+
+### Session & Security
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `SESSION_HEADER` | `X-Session-ID` | Session header name |
+| `SESSION_AUTO_ISSUE` | `true` | Auto-issue session IDs |
+| `CORS_ORIGINS` | `http://localhost:3000` | Allowed CORS origins |
+
+---
+
+## 📡 API Reference
+
+### Core Endpoints
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Liveness health check |
+| `POST` | `/api/chat` | **Main chat endpoint** — streams SSE events |
+| `POST` | `/api/ingest` | Upload and ingest a document |
+| `GET` | `/api/ingest/{doc_id}/status` | Poll ingestion status |
+| `GET` | `/api/documents` | List all indexed documents |
+| `DELETE` | `/api/documents/{doc_id}` | Delete a document |
+
+### Session Management
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/api/sessions` | Create a new session |
+| `GET` | `/api/sessions/{session_id}/history` | Get session chat history |
+| `GET` | `/api/sessions/{session_id}/usage` | Get session usage metrics |
+| `POST` | `/api/sessions/{session_id}/cleanup` | Clear session history |
+| `DELETE` | `/api/sessions/{session_id}` | Delete session |
+
+### Conversations
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/conversations` | List conversations |
+| `POST` | `/api/conversations` | Create conversation |
+| `PATCH` | `/api/conversations/{id}` | Update conversation |
+
+### Skills
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/skills` | List all available skills |
+| `POST` | `/api/skills` | Create a custom skill |
+| `POST` | `/api/skills/{name}/execute` | Execute a specific skill |
+| `DELETE` | `/api/skills/{name}` | Delete a custom skill |
+
+### MCP
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/mcp/connections` | List MCP connections |
+| `POST` | `/api/mcp/connections` | Register an MCP server |
+| `DELETE` | `/api/mcp/connections/{id}` | Remove an MCP connection |
+| `GET/POST` | `/mcp` | MCP server endpoint for clients |
+
+### Voice
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/api/voice/transcribe` | Transcribe audio (STT) |
+| `POST` | `/api/voice/synthesize` | Synthesize speech (TTS) |
+
+### SSE Event Stream
+
+`POST /api/chat` streams structured events:
+
+```
+data: {"type":"agent_status","agent":"router","status":"active","message":"Routing query..."}
+
+data: {"type":"thinking","agent":"grader","content":"Evaluating 5 passages...","step":2}
+
+data: {"type":"retrieval_info","info":{"retrieved_count":20,"reranked_count":5}}
+
+data: {"type":"text","content":"Based on the analysis..."}
+
+data: {"type":"sources","sources":[{"doc_title":"Report.pdf","page":4,"score":0.94}]}
+
+data: {"type":"usage_info","usage":{"prompt_tokens":1200,"completion_tokens":450,"total_tokens":1650}}
+
+data: [DONE]
+```
+
+**Event Types:** `agent_status` | `thinking` | `retrieval_info` | `text` | `sources` | `web_results` | `tool_result` | `image_result` | `voice_audio` | `usage_info` | `error` | `done`
+
+---
+
+## 📁 Project Structure
+
+```
+Lumina/
+├── 📁 assets/                           # README artwork, architecture diagrams
+│
+├── 📁 backend/
+│   ├── 📁 app/
+│   │   ├── 📁 agents/                   # Five CRAG agents
+│   │   │   ├── router.py                #   Intent detection & skill routing
+│   │   │   ├── retriever.py             #   Hybrid search orchestration
+│   │   │   ├── grader.py                #   Evidence quality scoring
+│   │   │   ├── rewriter.py              #   Query expansion (HyDE/step-back/decomp)
+│   │   │   └── generator.py             #   Source-grounded response generation
+│   │   │
+│   │   ├── 📁 graph/                    # LangGraph corrective RAG topology
+│   │   │   └── crag_graph.py            #   Graph definition & state machine
+│   │   │
+│   │   ├── 📁 ingestion/               # Document processing pipeline
+│   │   │   ├── adaptive_parser.py       #   Format-aware document parsing
+│   │   │   ├── autosense_orchestrator.py#   Automatic chunking strategy selection
+│   │   │   ├── parent_child_chunker.py  #   Hierarchical chunk relationships
+│   │   │   ├── section_chunker.py       #   Heading-aware section splitting
+│   │   │   ├── semantic_chunker.py      #   Embedding-based semantic splitting
+│   │   │   ├── contextual_headers.py    #   Document-level context injection
+│   │   │   ├── document_analyzer.py     #   Document structure analysis
+│   │   │   ├── fast_embedder.py         #   CPU-optimized BGE embeddings
+│   │   │   ├── image_extractor.py       #   Visual content extraction
+│   │   │   ├── audio_pipeline.py        #   Audio transcription pipeline
+│   │   │   ├── video_pipeline.py        #   Video frame extraction
+│   │   │   └── pipeline.py              #   Main ingestion orchestrator
+│   │   │
+│   │   ├── 📁 retrieval/               # Search & ranking
+│   │   │   └── qdrant_store.py          #   Hybrid dense+sparse search, RRF, rerank
+│   │   │
+│   │   ├── 📁 services/                # Business logic services
+│   │   │   ├── provider_registry.py     #   Multi-LLM provider management
+│   │   │   ├── gemini_client.py         #   Gemini API client
+│   │   │   ├── llm_client.py            #   Unified LLM interface
+│   │   │   ├── mcp_client.py            #   MCP client for external tools
+│   │   │   ├── supabase_client.py       #   Cloud persistence layer
+│   │   │   ├── safety.py                #   Content safety guard
+│   │   │   ├── usage_tracker.py         #   Per-session token/query tracking
+│   │   │   ├── observability.py         #   Metrics and logging
+│   │   │   └── voice_service.py         #   STT/TTS service
+│   │   │
+│   │   ├── 📁 skills/                  # Cognitive skill system
+│   │   │   ├── skill_router.py          #   Three-tier skill routing
+│   │   │   ├── skill_registry.py        #   Skill discovery & management
+│   │   │   ├── markdown_loader.py       #   Markdown skill definition parser
+│   │   │   ├── web_search_skill.py      #   Tavily web search integration
+│   │   │   ├── image_gen_skill.py       #   SDXL image generation
+│   │   │   ├── mcp_tool_skill.py        #   MCP tool invocation
+│   │   │   └── 📁 definitions/          #   13 built-in skill definitions
+│   │   │       ├── analysis/            #     Causal reasoning
+│   │   │       ├── briefing/            #     Executive briefing
+│   │   │       ├── coding/              #     Code architecture review
+│   │   │       ├── creative/            #     Prompt architecture
+│   │   │       ├── data/                #     Structured extraction
+│   │   │       ├── financial/           #     Financial auditing
+│   │   │       ├── legal/               #     Contract risk analysis
+│   │   │       └── reasoning/           #     Sonnet/Opus/Fable reasoning
+│   │   │
+│   │   ├── 📁 middleware/              # Request processing
+│   │   │   ├── session.py               #   Session isolation middleware
+│   │   │   └── rate_limiter.py          #   Sliding window rate limits
+│   │   │
+│   │   ├── 📁 routers/                 # API route modules
+│   │   ├── main.py                      # FastAPI app + SSE orchestration
+│   │   ├── mcp_server.py               # MCP server entry point
+│   │   └── config.py                    # Centralized configuration
+│   │
+│   ├── 📁 tests/                       # 298 tests across 37 test files
+│   ├── requirements.txt                # Python dependencies
+│   └── env.example                     # Annotated environment template
+│
+├── 📁 frontend/
+│   ├── 📁 app/                         # Next.js App Router
+│   │   ├── page.tsx                    #   Main workspace page
+│   │   ├── layout.tsx                  #   Root layout with metadata
+│   │   └── globals.css                 #   Global styles + design tokens
+│   │
+│   ├── 📁 components/                  # 18 React components
+│   │   ├── Sidebar.tsx                 #   Document library + activity widget
+│   │   ├── Header.tsx                  #   Navigation + model selector
+│   │   ├── ChatInput.tsx               #   Multimodal input composer
+│   │   ├── MessageList.tsx             #   Message container
+│   │   ├── MessageItem.tsx             #   Individual message rendering
+│   │   ├── StreamingMessage.tsx        #   Live token streaming display
+│   │   ├── MarkdownRenderer.tsx        #   Rich Markdown + code highlighting
+│   │   ├── ThinkingArea.tsx            #   Agent trace visualization
+│   │   ├── ThinkingStrip.tsx           #   Compact thinking indicator
+│   │   ├── AgentTrace.tsx              #   Agent pipeline visualization
+│   │   ├── AgentBadge.tsx              #   Agent status indicators
+│   │   ├── CitationCard.tsx            #   Source citation display
+│   │   ├── WebResultsCard.tsx          #   Web search result cards
+│   │   ├── ToolResultCard.tsx          #   MCP tool result cards
+│   │   ├── ImageResultCard.tsx         #   Generated image display
+│   │   ├── EmptyState.tsx              #   Welcome state + prompt starters
+│   │   ├── SkillsModal.tsx             #   Cognitive Skills Hub modal
+│   │   └── MCPModal.tsx                #   MCP Hub modal
+│   │
+│   ├── 📁 lib/                         # Shared utilities
+│   │   ├── api.ts                      #   API client + SSE streaming
+│   │   └── types.ts                    #   TypeScript type definitions
+│   │
+│   └── 📁 __tests__/                   # Frontend contract tests
+│
+├── render.yaml                         # Render deployment configuration
+├── LICENSE                             # MIT License
+└── README.md                           # You are here
+```
+
+---
+
+## 🧪 Testing
+
+### Backend Test Suite
+
+**298 tests** across **37 test files** covering every layer:
+
+```bash
+cd backend
+python -m pytest tests -v
+```
+
+| Test Area | Files | What's Covered |
+| --- | --- | --- |
+| **CRAG Agents** | `test_router.py`, `test_retriever.py`, `test_grader.py`, `test_rewriter.py` | Intent routing, hybrid search, batch grading, query expansion |
+| **Graph** | `test_skills_graph.py`, `test_pipeline_smoke.py` | End-to-end graph execution, skill integration |
+| **Retrieval** | `test_qdrant_store.py`, `test_qdrant_store_weights.py`, `test_cpu_reranker.py` | Hybrid search, RRF fusion weights, cross-encoder reranking |
+| **Ingestion** | `test_ingestion_pipeline.py`, `test_section_chunker.py`, `test_semantic_chunker.py`, `test_parent_child_chunker.py` | Format parsing, chunking strategies, hierarchy preservation |
+| **Embeddings** | `test_fast_embedder.py`, `test_contextual_headers.py`, `test_document_analyzer.py` | CPU embeddings, contextual framing, document analysis |
+| **Providers** | `test_provider_registry.py`, `test_gemini_client.py`, `test_llm_client.py` | Multi-provider routing, failover, task-specific model selection |
+| **Skills** | `test_skills.py`, `test_skills_extended.py`, `test_dynamic_skills.py` | Skill loading, routing, custom skill CRUD, session scoping |
+| **Security** | `test_mcp_security.py`, `test_safety.py`, `test_rate_limiter.py`, `test_session_middleware.py` | URL validation, content safety, rate limiting, session isolation |
+| **Persistence** | `test_supabase_graceful.py`, `test_observability_and_usage.py` | Graceful fallback, usage tracking, metrics |
+| **Voice** | `test_voice.py`, `test_voice_service.py` | Transcription, synthesis, format handling |
+| **API** | `test_new_endpoints.py` | Endpoint contracts, error handling |
+
+### Frontend Tests
+
+```bash
+cd frontend
+npm test          # Unit/contract tests
+npm run build     # TypeScript compilation + build verification
+```
+
+---
+
+## 🚢 Deployment
+
+### Render (Recommended)
+
+The repository includes `render.yaml` for one-click deployment:
+
+1. Fork or push the repo to GitHub
+2. Connect your GitHub repo to [Render](https://render.com)
+3. Render auto-detects `render.yaml` and creates two services:
+   - **`lumina-backend`** — Python web service (FastAPI + Uvicorn)
+   - **`lumina-frontend`** — Node web service (Next.js)
+4. Set your API keys and Qdrant URL in Render environment variables
+
+### Manual Deployment
+
+The architecture separates cleanly for any host:
+
+| Service | Deploy As | Requirements |
+| --- | --- | --- |
+| Backend | Python web service | `pip install -r requirements.txt`, Uvicorn, env vars |
+| Frontend | Node/Next.js service | `npm install && npm run build`, `NEXT_PUBLIC_API_URL` |
+| Vector Store | Managed service | Qdrant Cloud or self-hosted Docker |
+| Database | Managed service | Supabase (optional) |
+
+### Docker (Local Development)
+
+```bash
+# Start Qdrant
+docker run -p 6333:6333 -p 6334:6334 \
+  -v qdrant_data:/qdrant/storage \
+  qdrant/qdrant:latest
+
+# Backend
+cd backend && pip install -r requirements.txt
+uvicorn app.main:app --port 8000
+
+# Frontend
+cd frontend && npm install && npm run dev
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Here's how to get started:
+
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
+3. **Commit** your changes: `git commit -m 'feat: add amazing feature'`
+4. **Push** to the branch: `git push origin feature/amazing-feature`
+5. **Open** a Pull Request
+
+### Development Guidelines
+
+- Backend: Follow existing patterns in `agents/`, `services/`, and `skills/`
+- Frontend: Use TypeScript, follow component patterns in `components/`
+- Tests: Add tests for new features — aim to maintain 298+ test coverage
+- Commits: Use [Conventional Commits](https://www.conventionalcommits.org/)
+
+---
+
+## 📄 License
 
 Lumina is released under the [MIT License](LICENSE).
 
+```
+MIT License — Copyright (c) 2026 Vignesh Manivasakam
+```
+
+---
+
 <div align="center">
-  <strong>Build answers your team can inspect, not just admire.</strong>
+
+  <br />
+
+  **Built with ❤️ by [Vignesh Manivasakam](https://github.com/Vignesh-Manivasakam)**
+
+  <br />
+
+  <em>Build answers your team can inspect, not just admire.</em>
+
+  <br /><br />
+
+  ⭐ **Star this repo** if you find it useful — it helps others discover Lumina!
+
+  <br />
+
+  <a href="https://github.com/Vignesh-Manivasakam/Lumina">
+    <img src="https://img.shields.io/github/stars/Vignesh-Manivasakam/Lumina?style=social" alt="GitHub stars" />
+  </a>
+
 </div>
