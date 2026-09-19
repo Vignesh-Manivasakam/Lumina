@@ -9,6 +9,7 @@
     <a href="#-quick-start"><img src="https://img.shields.io/badge/🚀_Quick_Start-Get_Running-2864DC?style=for-the-badge" alt="Quick Start" /></a>
     <a href="https://lumina-frontend-ma7n.onrender.com"><img src="https://img.shields.io/badge/🌐_Live_Demo-Try_Now-10B981?style=for-the-badge" alt="Live Demo" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/📄_License-MIT-111827?style=for-the-badge" alt="MIT License" /></a>
+    <a href="https://www.linkedin.com/in/vignesh-manivasakam"><img src="https://img.shields.io/badge/LinkedIn-Profile-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
   </p>
 
   <p>
@@ -20,6 +21,7 @@
     <img src="https://img.shields.io/badge/Qdrant-Hybrid_Retrieval-DC244C?logo=qdrant&logoColor=white" alt="Qdrant" />
     <img src="https://img.shields.io/badge/MCP-Bidirectional-8B5CF6" alt="Model Context Protocol" />
     <img src="https://img.shields.io/badge/Tests-298_Passing-16A34A?logo=pytest&logoColor=white" alt="298 Tests Passing" />
+    <img src="https://img.shields.io/badge/Author-Vignesh_Manivasakam-0A66C2?logo=linkedin&logoColor=white" alt="Author" />
   </p>
 
   <br />
@@ -144,7 +146,7 @@ Lumina provides a complete research workspace — not just a chat box:
 ## 🏗 Core Architecture
 
 <div align="center">
-  <img src="assets/system-architecture.png" alt="Lumina System Architecture" width="900" />
+  <img src="assets/lumina_primary_system_architecture.png" alt="Lumina 5-Agent LangGraph CRAG System Architecture" width="950" />
 </div>
 
 ### Design Principles
@@ -258,6 +260,12 @@ Lumina ships with **13 domain-specific cognitive skills** loaded from Markdown d
 1. **Exact trigger matching** (fastest)
 2. **Micro-LLM intent expansion** with dense/sparse matching
 3. **Reasoning depth fallback** (Sonnet → Opus → Fable)
+
+<p align="center">
+  <img src="assets/lumina_secondary_cognitive_skills_hub.png" alt="Lumina Cognitive Skills Hub" width="850" />
+  <br>
+  <em>Interactive Cognitive Skills Hub: dynamic dispatch of specialized domain reasoning protocols and custom tool execution matrices.</em>
+</p>
 
 ### Built-in Skills Catalog
 
@@ -823,7 +831,7 @@ MIT License — Copyright (c) 2026 Vignesh Manivasakam
 
   <br />
 
-  **Built with ❤️ by [Vignesh Manivasakam](https://github.com/Vignesh-Manivasakam)**
+  **Built with ❤️ by [Vignesh Manivasakam](https://github.com/Vignesh-Manivasakam) ([LinkedIn](https://www.linkedin.com/in/vignesh-manivasakam))**
 
   <br />
 
