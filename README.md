@@ -6,7 +6,7 @@
   <p><strong>Enterprise-grade multimodal document intelligence powered by Corrective RAG, Adaptive Cognitive Skills, and Bidirectional MCP.</strong></p>
 
   <p>
-    <a href="#-quick-start"><img src="https://img.shields.io/badge/🚀_Quick_Start-Get_Running-2864DC?style=for-the-badge" alt="Quick Start" /></a>
+    <a href="#quick-start"><img src="https://img.shields.io/badge/🚀_Quick_Start-Get_Running-2864DC?style=for-the-badge" alt="Quick Start" /></a>
     <a href="https://lumina-frontend-ma7n.onrender.com"><img src="https://img.shields.io/badge/🌐_Live_Demo-Try_Now-10B981?style=for-the-badge" alt="Live Demo" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/📄_License-MIT-111827?style=for-the-badge" alt="MIT License" /></a>
     <a href="https://www.linkedin.com/in/vignesh-manivasakam"><img src="https://img.shields.io/badge/LinkedIn-Profile-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
@@ -34,23 +34,23 @@
 
 ## 📋 Table of Contents
 
-- [What is Lumina?](#-what-is-lumina)
-- [Live Demo](#-live-demo)
-- [Product Tour](#-product-tour)
-- [Core Architecture](#-core-architecture)
-- [Key Features](#-key-features)
-- [Cognitive Skills System](#-cognitive-skills-system)
-- [MCP Integration](#-mcp-integration)
-- [Supported File Formats](#-supported-file-formats)
-- [Tech Stack](#-tech-stack)
-- [Quick Start](#-quick-start)
-- [Configuration Reference](#-configuration-reference)
-- [API Reference](#-api-reference)
-- [Project Structure](#-project-structure)
-- [Testing](#-testing)
-- [Deployment](#-deployment)
-- [Contributing](#-contributing)
-- [License](#-license)
+- [What is Lumina?](#what-is-lumina)
+- [Live Demo](#live-demo)
+- [Product Tour](#product-tour)
+- [Core Architecture](#core-architecture)
+- [Key Features](#key-features)
+- [Cognitive Skills System](#cognitive-skills-system)
+- [MCP Integration](#mcp-integration)
+- [Supported File Formats](#supported-file-formats)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Configuration Reference](#configuration-reference)
+- [API Reference](#api-reference)
+- [Project Structure](#project-structure)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
@@ -97,7 +97,7 @@ Experience Lumina live — no setup required:
 
 ---
 
-## 🎬 Product Tour & Demo Video
+## 🎬 Product Tour
 
 Experience Lumina in action across live document intelligence, adaptive skills, and agent reasoning workflows:
 
